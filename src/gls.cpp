@@ -1,3 +1,4 @@
+#include "RcppArmadillo.h"
 #include "gls.h"
 #include "res.h"
 using namespace arma;

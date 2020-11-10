@@ -1,8 +1,6 @@
 #ifndef __ARIMA_FILTER__
 #define __ARIMA_FILTER__
 
-#include "RcppArmadillo.h"
-
 arma::colvec filterC(const arma::colvec &x, const arma::colvec &omega,
                      const arma::colvec &delta, int b);
 

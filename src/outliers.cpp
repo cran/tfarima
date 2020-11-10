@@ -1,3 +1,4 @@
+#include "RcppArmadillo.h"
 #include "outliers.h"
 #include "res.h"
 #include "diff.h"

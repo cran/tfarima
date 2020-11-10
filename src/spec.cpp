@@ -1,3 +1,4 @@
+#include "RcppArmadillo.h"
 #include "spec.h"
 using namespace arma;
 

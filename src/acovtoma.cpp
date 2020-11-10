@@ -1,3 +1,4 @@
+#include "RcppArmadillo.h"
 #include "acovtoma.h"
 using namespace arma;
 

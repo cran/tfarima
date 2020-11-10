@@ -1,3 +1,4 @@
+#include "RcppArmadillo.h"
 #include "res.h"
 #include "tacov.h"
 #include "pol.h"

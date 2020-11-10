@@ -1,3 +1,4 @@
+#include "RcppArmadillo.h"
 #include "pol.h"
 #include "tacov.h"
 using namespace arma;

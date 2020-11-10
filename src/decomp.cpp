@@ -69,14 +69,14 @@ arma::mat decompFC(const arma::mat &T, const double mu) {
       }
       for (h=0; h<order; h++) {
         for (i=0; i <= r; i++) 
-          F(i, k) = pow(coef, (i+1))*pow(i+1, h); 
+          F(i, k) = pow(coef, (i+1))*pow(i+1.0, h); 
         k++;
       }
     } else if (simeqC(freq, 0.5)) {
       coef = T(j, 0);
       for (h=0; h<order; h++) {
         for (i=0; i <= r; i++) 
-          F(i, k) = pow(coef, (i+1))*pow(i+1, h); 
+          F(i, k) = pow(coef, (i+1))*pow(i+1.0, h); 
         k++;
       }
     } else if(T(j, 1) > 0.0){
@@ -84,13 +84,13 @@ arma::mat decompFC(const arma::mat &T, const double mu) {
       arg = 2*datum::pi*freq;
       for (h=0; h<order; h++) {
         for (i=0; i <= r; i++) 
-          F(i, k) = pow(coef, i+1)*cos(arg*(i+1))*pow(i+1, h); 
+          F(i, k) = pow(coef, i+1)*cos(arg*(i+1))*pow(i+1.0, h); 
         k++;
       }
       
       for (h=0; h<order; h++) {
         for (i=0; i <= r; i++) 
-          F(i, k) = pow(coef, i+1)*sin(arg*(i+1))*pow(i+1, h); 
+          F(i, k) = pow(coef, i+1)*sin(arg*(i+1))*pow(i+1.0, h); 
         k++;
       }
     }

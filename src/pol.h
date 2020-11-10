@@ -1,7 +1,6 @@
 #ifndef _ARIMA_POL_
 #define _ARIMA_POL_
 
-#include "RcppArmadillo.h"
 double polyevalC(const arma::colvec &pol, double z);
 arma::mat polyrootsC(const arma::colvec &pol);
 arma::mat sortrootsC(const arma::cx_colvec &roots);

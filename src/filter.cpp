@@ -1,3 +1,4 @@
+#include "RcppArmadillo.h"
 #include "filter.h"
 using namespace arma;
 

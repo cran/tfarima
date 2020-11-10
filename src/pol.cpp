@@ -1,3 +1,4 @@
+#include "RcppArmadillo.h"
 #include "pol.h"
 using namespace arma;
 
@@ -33,12 +34,12 @@ arma::mat polyrootsC(const arma::colvec &pol) {
 }
 
 bool simeqC(double x, double y, double tol) {
-  if (std::abs(x - y) < tol) return true;
+  if (fabs(x - y) < tol) return true;
   else return false;
 }
 
 bool ltC(double x, double y, double tol) {
-  if (std::abs(x - y) < tol) return false;
+  if (fabs(x - y) < tol) return false;
   else if (x < y) return true;
   else return false;
 }
@@ -57,7 +58,7 @@ arma::mat sortrootsC(const arma::cx_colvec &r) {
   for (j = 0; j < p; j++) {
     cx = r(j);
     T(j, 0) = cx.real();  T(j, 1) = cx.imag();
-    T(j, 2) = std::abs(cx);
+    T(j, 2) = fabs(cx);
     T(j, 3) = acos( T(j, 0)/T(j, 2) )/(2.0*datum::pi);
     if ( simeqC(T(j, 3), 0) ) T(j, 3) = 0; 
     T(j, 4) = 1.0/T(j, 3);
@@ -224,12 +225,12 @@ bool admregC(const arma::colvec &pol, bool ar) {
   
   if (ar) {
     for (j = 0; j < p; j++) {
-      if (std::abs(eigval(j))>= 1.0)
+      if (fabs(eigval(j))>= 1.0)
         return false;
     }
   } else {
     for (j = 0; j < p; j++) {
-      if (std::abs(eigval(j))>1.0)
+      if (fabs(eigval(j))>1.0)
         return false;
     }
   }
