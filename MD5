@@ -1,4 +1,4 @@
-09037d82dda38c824b4c59930863290d *DESCRIPTION
+d2178ecf5870237a7c527c5e14fc6f24 *DESCRIPTION
 94ee0877aff30600d9585185bf90f20a *NAMESPACE
 b26893423853b05bc580db7783cc4c41 *R/RcppExports.R
 fab399dcbfefe92d5672950af6ef54cb *R/data.R
@@ -16,7 +16,7 @@ fbe26b0576b036d2526c0a51fa76b259 *data/rsales.rda
 7272f08464105002cace0d893d813fa5 *data/seriesC.rda
 98fc460e3f1b54f02930f3643510c800 *data/seriesJ.rda
 2d37ca666b482897292c375c7ae7b97a *inst/doc/tfarima.Rnw
-54687c302472172f1f5b336f63331619 *inst/doc/tfarima.pdf
+6d844ba817b993c966526fd40491f619 *inst/doc/tfarima.pdf
 1a4472ae792e098e92d298ae64de0952 *man/CalendarVar.Rd
 100afa613008a4792a3b67b8071adcd3 *man/InterventionVar.Rd
 4fa93546c4d3be19cd6f59bbdfcdb351 *man/Wtelephone.Rd
@@ -93,7 +93,7 @@ a0abeb59479d5a2c57306c96884c302d *src/filter.h
 57259ecfc41cfda0e3d3fc3ce530eae3 *src/loglik.h
 755a4d2a829295142843d4fc851384af *src/outliers.cpp
 593b7fbc32f4f501e3f602df44d28ac9 *src/outliers.h
-d8304487d49e27a79784a89ea9084aed *src/pol.cpp
+2bebce85f8df60b12bfc9ab157584312 *src/pol.cpp
 75bed39caf875b428f99c05f1811970b *src/pol.h
 4a5cdae07990e8050821fc7e2a1b0fd3 *src/res.cpp
 e6a12886375e02f22f3a180c7f026fab *src/res.h

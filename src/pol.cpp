@@ -48,7 +48,7 @@ bool ltC(double x, double y, double tol) {
 arma::mat sortrootsC(const arma::cx_colvec &r) {
   int h, i, j, p;
   double d;
-  std::complex < double> cx;
+  std::complex <double> cx;
   
   p = r.n_elem;
   Col<int> indx(p);
@@ -58,7 +58,7 @@ arma::mat sortrootsC(const arma::cx_colvec &r) {
   for (j = 0; j < p; j++) {
     cx = r(j);
     T(j, 0) = cx.real();  T(j, 1) = cx.imag();
-    T(j, 2) = fabs(cx);
+    T(j, 2) = abs(cx);
     T(j, 3) = acos( T(j, 0)/T(j, 2) )/(2.0*datum::pi);
     if ( simeqC(T(j, 3), 0) ) T(j, 3) = 0; 
     T(j, 4) = 1.0/T(j, 3);
@@ -222,15 +222,14 @@ bool admregC(const arma::colvec &pol, bool ar) {
     A(j, j-1) = 1.0;
   
   eig_gen(eigval, A);
-  
   if (ar) {
     for (j = 0; j < p; j++) {
-      if (fabs(eigval(j))>= 1.0)
+      if (abs(eigval(j))>= 1.0)
         return false;
     }
   } else {
     for (j = 0; j < p; j++) {
-      if (fabs(eigval(j))>1.0)
+      if (abs(eigval(j))>1.0)
         return false;
     }
   }
