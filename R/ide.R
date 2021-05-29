@@ -1,46 +1,57 @@
 
 #' Identification plots
-#' 
-#' \code{ide} displays graphs useful to identify a tentative ARIMA 
-#' model for a time series.
+#'
+#' \code{ide} displays graphs useful to identify a tentative ARIMA model for a
+#' time series.
 #'
 #' @param Y Univariate or multivariate time series.
-#' @param transf Data transformations, list(bc = F, d = 0, D = 0, S = F),
-#' where bc is the Box-Cox logarithmic transformation, d and D are the
-#' number of nonseasonal and seasonal differences, and S is the annual 
-#' sum operator.
+#' @param transf Data transformations, list(bc = F, d = 0, D = 0, S = F), where
+#'   bc is the Box-Cox logarithmic transformation, d and D are the number of
+#'   nonseasonal and seasonal differences, and S is the annual sum operator.
 #' @param order.polreg an integer indicating the order of a polynomial trend.
 #' @param lag.max number of autocorrelations.
-#' @param wn.bands logical. If TRUE confidence intervals for sample 
-#' autocorrelations are computed assuming a white noise series. 
-#' @param graphs graphs to be shown: plot, hist, acf, pacf, pgram, 
-#' cpgram (cummulative periodogram), rm (range-median).
+#' @param lags.at the lags of the ACF/PACF at which tick-marks are to be drawn.
+#' @param freq.at the frequencies of the (cum) periodogram at at which
+#'   tick-marks are to be drawn.
+#' @param wn.bands logical. If TRUE confidence intervals for sample
+#'   autocorrelations are computed assuming a white noise series.
+#' @param graphs graphs to be shown: plot, hist, acf, pacf, pgram, cpgram
+#'   (cummulative periodogram), rm (range-median).
 #' @param set.layout logical. If TRUE the layout is set by the function,
-#' otherwise it is set by the user.
-#' @param byrow logical. If TRUE the layout is filled by rows, otherwise it 
-#' is filled by columns.
+#'   otherwise it is set by the user.
+#' @param byrow logical. If TRUE the layout is filled by rows, otherwise it is
+#'   filled by columns.
 #' @param main title of the graph.
+#' @param envir environment in which the function arguments are evaluated. If
+#'   NULL the calling environment of this function will be used.
 #' @param ... additional arguments.
 #' @return NULL
-#' 
+#'
 #' @examples
 #' Y <- AirPassengers
 #' ide(Y, graphs = c("plot", "rm"))
 #' ide(Y, transf = list(list(bc = TRUE, S = TRUE), list(bc = TRUE, d = 1, D = 1)))
-#' 
+#'
 #' @export
 ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL, 
-                wn.bands = TRUE, graphs = c("plot", "acf", "pacf"), 
-                set.layout = TRUE, byrow = TRUE, main = "", ...) {
-  
+                lags.at = NULL, freq.at = NULL,
+                wn.bands = TRUE, graphs = c("plot", "acf", "pacf"),
+                set.layout = TRUE, byrow = TRUE, main = "", envir=NULL, ...) {
 
-  ylab <- deparse(substitute(Y))
-  if (!exists(ylab, envir = .GlobalEnv)) ylab <- "y"
-  
+
+  if (is.null (envir)) envir <- parent.frame ()
   args <- list(...)
+  if (is.null(args$ylab)) {
+    ylab <- deparse(substitute(Y))
+    if (!exists(ylab, envir = envir)) ylab <- "y"
+  } else {
+    ylab <- args$ylab
+  }
+
   graphs <- tolower(graphs)
   graphs <- unique(graphs)
-  graphs <- match.arg(graphs, c("plot", "hist", "acf", "pacf", "pgram", "cpgram", "rm", "sdm"), several.ok = TRUE)
+  graphs <- match.arg(graphs, c("plot", "hist", "acf", "pacf", "pgram", "cpgram",
+                                "rm", "sdm"), several.ok = TRUE)
   n.graphs <- length(graphs)
   n.transf <- length(transf)
   if (n.transf == 0) {
@@ -130,13 +141,18 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL,
     layout(m)
   }
   
-  if (n.ser > 1) ylab1 <- ylab
+  if (n.ser > 1) {
+    ylab1 <- names(Y)
+    if (length(ylab1) != n.ser)
+      ylab1 <- paste0(ylab, 1:n.ser)
+  }
   for (ser in 1:n.ser) {
     for (tr in 1:n.transf) {
+      maxcorr <- 0
       if (is.matrix(Y)) y <- Y[, ser]
       else if (is.list(Y)) y <- Y[[ser]]
       else y <- Y 
-      if (n.ser > 1) ylab <- paste(ylab1, ser, sep = "") 
+      if (n.ser > 1) ylab <- ylab1[ser] 
       if (!is.ts(y)) y <- ts(y)
       s <- frequency(y)
       
@@ -152,7 +168,9 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL,
       else bc <- FALSE
       if (d > 0) y <- diff(y, differences = d)
       if (D > 0) y <- diff(y, lag = s, differences = D)
-      if (S & s > 1) y <- ts(diffC(y, rep(1, s), FALSE), end = end(y), frequency = frequency(y))
+      if (S & s > 1) 
+        y <- ts(diffC(y, rep(1, s), FALSE), end = end(y), 
+                frequency = frequency(y))
 
       if (!is.null(i)) {
         if (inherits(i, "lagpol")) i <- i$pol
@@ -166,10 +184,10 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL,
       stopifnot(n > 1)
       if (is.null(lag.max) ) {
         if (s > 1) lag.max <- min(3*s+3, n/4)
-        else lag.max <- floor(n/4)
+        else lag.max <- min(floor(n/4), 3*168+3)
       } else if (lag.max < 1 | lag.max > n-1) {
         if (s > 1) lag.max <- min(3*s+3, n/4)
-        else lag.max <- floor(n/4)
+        else lag.max <- min(floor(n/4), 3*168+3)
       }
       stopifnot(lag.max > 0)
     
@@ -188,7 +206,8 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL,
     
       for (j in 1:n.graphs) { 
         if (graphs[j] ==  "plot") {
-          plot(y, xlab = "t", ylab = tslabel(ylab, bc, d, D, s, S), type = "n", col = "black", ylim = c(miny, maxy))
+          plot(y, xlab = "t", ylab = tslabel(ylab, bc, d, D, s, S), type = "n", 
+               col = "black", ylim = c(miny, maxy))
           abline(h = seq(miny, maxy, sy), lty = 2, col = "gray")
           abline(h = my, col = "gray")  
           lines(y, type = "l")
@@ -202,9 +221,13 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL,
         }
         else if (graphs[j] ==  "acf") {
           rho <- stats::acf(y, lag.max = lag.max, plot = F)$acf[, ,]
+          phi <- stats::pacf(y, lag.max = lag.max, plot = F)$acf[, ,]
           rho <- rho[-1]
           k <- 1:length(rho)
-          if (max(abs(rho)) < 0.5) ylim = c(-0.5, 0.5)
+          maxcorr <- max(c(abs(c(rho, phi)))) 
+          if (maxcorr < 0.25) ylim = c(-0.25, 0.25)
+          else if (maxcorr < 0.5) ylim = c(-0.5, 0.5)
+          else if (maxcorr < 0.75) ylim = c(-0.75, 0.75)
           else ylim = c(-1, 1)
           plot(k, rho, type = "n" ,xlab = "lag", ylab = "ACF", ylim = ylim, xaxt = "n")
           if (wn.bands) abline(h = c(-1.96/sqrt(n), 1.96/sqrt(n)), lty = 2, col = "gray")
@@ -217,27 +240,58 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL,
           }
           abline(h = 0)  
           #
-          if (s>1 & lag.max > s) { 
+          if (!is.null(lags.at)) {
+            if (length(lags.at) == 1) {
+              abline(v = seq(lags.at, lag.max, lags.at), lty = 2, col = "gray" )
+              axis(1, at = seq(lags.at, lag.max, lags.at))
+            } else if (length(lags.at) == 2) {
+              abline(v = seq(lags.at[1], lag.max, lags.at[1]), lty = 3, col = "gray" )
+              abline(v = seq(lags.at[2], lag.max, lags.at[2]), lty = 2, col = "gray" )
+              axis(1, at = seq(lags.at[1], lag.max, lags.at[1]), labels = FALSE)
+              axis(1, at = seq(lags.at[2], lag.max, lags.at[2]))
+            } else {
+              abline(v = lags.at, lty = 2, col = "gray" )
+              axis(1, at = lags.at)
+            }
+          } else if (s>1 & lag.max > s) { 
             abline(v = seq(s, lag.max, s), lty = 2, col = "gray" )
             axis(1, at = seq(s, lag.max, s))
-          } else if (lag.max > 5) {
+          } else if (lag.max > 5 & lag.max < 50) {
             abline(v = seq(5, lag.max, 5), lty = 2, col = "gray" )
             axis(1, at = seq(5, lag.max, 5))
           }
           lines(k, rho, type = "h")  
         }
         else if (graphs[j] ==  "pacf") {
-          phi <- stats::pacf(y, lag.max = lag.max, plot = F)$acf[, ,]
+          if (maxcorr == 0) {
+            phi <- stats::pacf(y, lag.max = lag.max, plot = F)$acf[, ,]
+            maxcorr <- max(abs(phi))
+          }
           k <- 1:length(phi)
-          if (max(abs(phi)) < 0.5) ylim = c(-0.5, 0.5)
+          if (maxcorr < 0.25) ylim = c(-0.25, 0.25)
+          else if (maxcorr < 0.5) ylim = c(-0.5, 0.5)
+          else if (maxcorr < 0.75) ylim = c(-0.75, 0.75)
           else ylim = c(-1, 1)
           plot(k, phi, type = "n", xlab = "lag", ylab = "PACF", ylim = ylim, xaxt = "n")
           abline(h = 0)
           abline(h = c(-1.96/sqrt(n), 1.96/sqrt(n)), lty = 2, col = "gray")  
-          if (s>1 & lag.max > s) {
+          if (!is.null(lags.at)) {
+            if (length(lags.at) == 1) {
+              abline(v = seq(lags.at, lag.max, lags.at), lty = 2, col = "gray" )
+              axis(1, at = seq(lags.at, lag.max, lags.at))
+            } else if (length(lags.at) == 2) {
+              abline(v = seq(lags.at[1], lag.max, lags.at[1]), lty = 3, col = "gray")
+              abline(v = seq(lags.at[2], lag.max, lags.at[2]), lty = 2, col = "gray" )
+              axis(1, at = seq(lags.at[1], lag.max, lags.at[1]), labels = FALSE)
+              axis(1, at = seq(lags.at[2], lag.max, lags.at[2]))
+            } else {
+              abline(v = lags.at, lty = 2, col = "gray" )
+              axis(1, at = lags.at)
+            }
+          } else if (s>1 & lag.max > s) {
             abline(v = seq(s, lag.max, s), lty = 2, col = "gray" )
             axis(1, at = seq(s, lag.max, s))
-          } else if (lag.max > 5) {
+          } else if (lag.max > 5 & lag.max < 50) {
             abline(v = seq(5, lag.max, 5), lty = 2, col = "gray" )
             axis(1, at = seq(5, lag.max, 5))
           }
@@ -257,7 +311,21 @@ ide <- function(Y, transf = list(), order.polreg = 0, lag.max = NULL,
           }
         } else if (graphs[j] ==  "pgram") {
           P <- pgramC(y, FALSE)
-          plot(P[, 1], P[, 2], type = "l", xlim = c(0, 0.5), ylab = "Periodogram", xlab = "Frequency")
+          plot(P[, 1], P[, 2], type = "l", xlim = c(0, 0.5), ylab = "Periodogram",
+               xlab = "Frequency", xaxt = "n")
+          if (length(freq.at) == 1) {
+            xticks <- (1:(freq.at/2))/freq.at
+            axis(1, at = xticks, labels = sprintf("%1.2f", xticks))
+          } else if (length(freq.at) == 2) {
+            axis(1, at = (1:(freq.at[1]/2))/freq.at[1], labels = FALSE)
+            xticks <- (1:(freq.at[2]/2))/freq.at[2]
+            axis(1, at = xticks, labels = sprintf("%1.2f",xticks))
+          } else {
+            if (s > 1 & s <= 24) {
+              xticks <- (1:(s/2))/s
+              axis(1, at = (1:(s/2))/s, labels = sprintf("%1.2f", xticks))
+            } else axis(1, at = seq(0.1, 0.5, 0.1))
+          }
           #lines(x = c(0, 6), z = c(0, 1), col = "gray", lty = 1)
           title(ylab = "Periodogram")
         } else if (graphs[j] ==  "cpgram") {

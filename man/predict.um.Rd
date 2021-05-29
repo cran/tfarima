@@ -4,7 +4,16 @@
 \alias{predict.um}
 \title{Forecasts from an ARIMA model}
 \usage{
-\method{predict}{um}(object, z = NULL, ori = NULL, n.ahead = 1, level = 0.95, ...)
+\method{predict}{um}(
+  object,
+  z = NULL,
+  ori = NULL,
+  n.ahead = 1,
+  level = 0.95,
+  i = NULL,
+  envir = NULL,
+  ...
+)
 }
 \arguments{
 \item{object}{an object of class \code{\link{um}}.}
@@ -16,6 +25,12 @@
 \item{n.ahead}{number of steps ahead.}
 
 \item{level}{confidence level.}
+
+\item{i}{transformation of the series \code{z} to be forecasted. It is a
+lagpol as those of a \code{\link{um}} object.}
+
+\item{envir}{environment in which the function arguments are evaluated.
+If NULL the calling environment of this function will be used.}
 
 \item{...}{additional arguments.}
 }

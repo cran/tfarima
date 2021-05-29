@@ -14,9 +14,11 @@
 #' @param mu mean of the stationary time series.
 #' @param sig2 variance of the error.
 #' @param bc logical. If TRUE logs are taken.
-#' @param fit logical. If TRUE, model is fitted. 
+#' @param fit logical. If TRUE, model is fitted.
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #' @param ... additional arguments.
-#' 
+#'
 #' @return An object of class \code{um}.
 #' 
 #' @references
@@ -31,18 +33,19 @@
 #' ma1 <- um(ma = "(1 - 0.8B)")
 #' ma2 <- um(ma = "(1 - 1.4B + 0.8B^2)")
 #' arma11 <- um(ar = "(1 - 1.4B + 0.8B^2)", ma = "(1 - 0.8B)")
-#' 
+#'
 #' @export
-um <- function(z = NULL, ar = NULL, i = NULL, ma = NULL, mu = NULL,  
-               sig2 = 1.0, bc = FALSE, fit = TRUE, ...) {
+um <- function(z = NULL, ar = NULL, i = NULL, ma = NULL, mu = NULL,
+               sig2 = 1.0, bc = FALSE, fit = TRUE, envir=NULL, ...) {
 
-  call <- match.call()  
+  call <- match.call()
+  if (is.null (envir)) envir <- parent.frame ()
   if (is.numeric(z)){
     z <- deparse(substitute(z))
-  } 
-  
+  }
+
   if (!is.null(ar)) {
-    ar <- .lagpol0(ar, "ar", "phi")
+    ar <- .lagpol0(ar, "ar", "phi", envir=envir)
     phi <- polyexpand(ar)
   } else {
     phi <- 1.0
@@ -50,14 +53,14 @@ um <- function(z = NULL, ar = NULL, i = NULL, ma = NULL, mu = NULL,
   names(phi) <- paste("[phi", 0:(length(phi)-1), "]", sep = "")
 
   if (!is.null(i)) {
-    i <- .lagpol0(i, "i","delta")
+    i <- .lagpol0(i, "i","delta", envir=envir)
     nabla <- polyexpand(i)
   } else {
     nabla <- 1.0
   }
-  
+
   if (!is.null(ma)) {
-    ma <- .lagpol0(ma, "ma", "theta")
+    ma <- .lagpol0(ma, "ma", "theta", envir=envir)
     theta <- polyexpand(ma)
   } else {
     theta <- 1.0
@@ -83,7 +86,7 @@ um <- function(z = NULL, ar = NULL, i = NULL, ma = NULL, mu = NULL,
   class(mod) <- "um"
   mod <- update.um(mod, unlist(param, use.names = TRUE))
   if (mod$is.adm) {
-    if (!is.null(z) & fit) mod <- fit.um(mod, ...)
+    if (!is.null(z) & fit) mod <- fit.um(mod, envir=envir, ...)
     else mod$b <- param.um(mod)
   } else {
     warning("non-admisible model")
@@ -251,9 +254,11 @@ autocorr.um <- function(um, lag.max = 10, par = FALSE, ...) {
 #' @param n.ahead a positive integer to extend the sample period of the
 #'   deterministic variables with \code{n.ahead} observations, which could be
 #'   necessary to forecast the output.
-#' @param p.value estimates with a p-value greater than p.value are omitted.   
+#' @param p.value estimates with a p-value greater than p.value are omitted.
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #' @param ... additional arguments.
-#' 
+#'
 #' @return An object of class "\code{\link{tfm}}".
 #' 
 #' @references W. R. Bell & S. C. Hillmer (1983) Modeling Time Series with
@@ -270,24 +275,25 @@ calendar <- function (um, ...) { UseMethod("calendar") }
 
 #' @rdname calendar
 #' @export
-calendar.um <- 
-function(um, z = NULL, form = c("dif", "td"), easter = FALSE, n.ahead = 0, 
-         p.value = 1, ...)
+calendar.um <-
+function(um, z = NULL, form = c("dif", "td"), easter = FALSE, n.ahead = 0,
+         p.value = 1, envir=NULL, ...)
 {
-  if (is.null(z)) z <- z.um(um)
+  if (is.null (envir)) envir <- parent.frame ()
+  if (is.null(z)) z <- z.um(um, envir=envir)
   if (frequency(z) != 12) stop("function only implemented for monthly ts")
   form <- match.arg(form)
-  
+
   n.ahead <- abs(n.ahead)
   xreg <- CalendarVar(z, form, easter, n.ahead)
-  tfm1 <- tfm(xreg = xreg, noise = um)
+  tfm1 <- tfm(xreg = xreg, noise = um, envir=envir)
   if (p.value < 0.999) {
     p <- summary.tfm(tfm1, p.values = TRUE)
     p <- (p[1:ncol(xreg)] <= p.value)
     if (all(p)) return(tfm1)
     if (any(p)) {
       xreg <- xreg[, p]
-      tfm1 <- tfm(xreg = xreg, noise = tfm1$noise)
+      tfm1 <- tfm(xreg = xreg, noise = tfm1$noise, envir=envir)
       return(tfm1)
     }
     return(um)
@@ -300,11 +306,14 @@ function(um, z = NULL, form = c("dif", "td"), easter = FALSE, n.ahead = 0,
 #' \code{diagchk} displays tools for diagnostic checking.
 #'
 #' @param mdl an object of class \code{um} or \code{tfm}.
-#' @param method exact or conditional residuals.   
+#' @param method exact or conditional residuals.
 #' @param lag.max number of lags for ACF/PACF.
+#' @param lags.at the lags of the ACF/PACF at which tick-marks are to be drawn.
+#' @param freq.at the frequencies of the (cum) periodogram at at which
+#'   tick-marks are to be drawn.
 #' @param std logical. If TRUE standardized residuals are shown.
 #' @param ... additional arguments.
-#' 
+#'
 #' @export
 diagchk <- function (mdl, ...) { UseMethod("diagchk") }
 
@@ -312,17 +321,22 @@ diagchk <- function (mdl, ...) { UseMethod("diagchk") }
 #' @rdname diagchk
 #' @param mdl an object of class \code{um}.
 #' @param z optional, an object of class \code{ts}.
-#' 
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
+#'
 #' @examples
 #' z <- AirPassengers
 #' airl <- um(z, i = list(1, c(1,12)), ma = list(1, c(1,12)), bc = TRUE)
 #' diagchk(airl)
 #' @export
-diagchk.um <- function(mdl, z = NULL, method = c("exact", "cond"), 
-                       lag.max = NULL, std = TRUE, ...) {
-  u <- residuals.um(mdl, z)
-  ide(u, graphs = c("plot", "hist", "acf", "pacf", "cpgram"),
-      lag.max = lag.max, std = std, ...)
+diagchk.um <- function(mdl, z = NULL, method = c("exact", "cond"),
+                       lag.max = NULL, lags.at = NULL, freq.at = NULL,
+                       std = TRUE, envir=NULL, ...) {
+  if (is.null (envir)) envir <- parent.frame ()
+  u <- residuals.um(mdl, z, envir=envir)
+  ide(u, graphs = c("plot", "hist", "acf", "pacf", "cpgram"), ylab = "u",
+      lag.max = lag.max, lags.at = lags.at, freq.at = freq.at,
+      std = std, envir=envir, ...)
 }
 
 
@@ -441,7 +455,6 @@ display.default <- function(um, ...) {
   }
 }
 
-
 #' Easter effect
 #'
 #' \code{easter} extends the ARIMA model \code{um} by including a regression
@@ -452,8 +465,10 @@ display.default <- function(um, ...) {
 #' @param n.ahead a positive integer to extend the sample period of the
 #'   Easter regression variable with \code{n.ahead} observations, which could be
 #'   necessary to forecast the output.
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #' @param ... additional arguments.
-#'    
+#'
 #' @return An object of class "\code{\link{tfm}}".
 #' 
 #' @examples
@@ -465,14 +480,15 @@ easter <- function (um, ...) { UseMethod("easter") }
 
 #' @rdname easter
 #' @export
-easter.um <- function(um, z = NULL, n.ahead = 0, ...) {
-  if (is.null(z)) z <- z.um(um)
+easter.um <- function(um, z = NULL, n.ahead = 0, envir=NULL, ...) {
+  if (is.null (envir)) envir <- parent.frame ()
+  if (is.null(z)) z <- z.um(um, envir=envir)
   if (frequency(z) != 12) stop("function only implemented for monthly ts")
-  
+
   n.ahead <- abs(n.ahead)
   easter <- EasterVar(z, n.ahead = n.ahead)
-  tfm(xreg = easter, noise = um)
-  
+  tfm(xreg = easter, noise = um, envir=envir)
+
 }
 
 
@@ -499,24 +515,27 @@ fit <- function (mdl, ...) { UseMethod("fit") }
 
 #' @rdname fit
 #' @param z a time series.
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #' @examples
 #' z <- AirPassengers
 #' airl <- um(i = list(1, c(1, 12)), ma = list(1, c(1, 12)), bc = TRUE)
 #' airl <- fit(airl, z)
 #' @export
-fit.um <- function(mdl, z = NULL, method = c("exact", "cond"), 
-                   optim.method = "BFGS", show.iter = FALSE, ... ) {
-  
+fit.um <- function(mdl, z = NULL, method = c("exact", "cond"),
+                   optim.method = "BFGS", show.iter = FALSE, envir=NULL, ... ) {
+
   stopifnot(inherits(mdl, "um"))
+  if (is.null (envir)) envir <- parent.frame ()
   if (!is.stationary.um(mdl)) stop("Non-stationary AR preestimates")
   if (!is.invertible.um(mdl)) stop("Non-invertible MA preestimates")
   if ((mdl$p > 50 || mdl$q > 50) && length(method) > 1) method <- "cond"
   method <- match.arg(method)
   exact <- method == "exact"
-  
+
   if (is.null(z)) {
     if (is.null(mdl$z)) stop("argment z required")
-    else z <- eval(parse(text = mdl$z), .GlobalEnv)
+    else z <- eval(parse(text = mdl$z), envir)
   } else {
     mdl$z <- deparse(substitute(z))
   }
@@ -538,7 +557,7 @@ fit.um <- function(mdl, z = NULL, method = c("exact", "cond"),
     mdl$is.adm <<- TRUE
     return(-ll)
   }
-  
+  if (mdl$bc & min(z) <= 0) mdl$bc <- FALSE
   w <- diffC(z, mdl$nabla, mdl$bc)
   b <- param.um(mdl)
   ll0 <- -logLik.arma(b)
@@ -658,7 +677,7 @@ function(mdl, ar = NULL, i = NULL, ma = NULL, mu = NULL, sig2 = NULL,
   ar <- newop(mdl$ar, ar)
   i <- newop(mdl$i, i)
   ma <- newop(mdl$ma, ma)
-  um(mdl$z, ar = ar, i = i, ma = ma, mu = mu, bc = bc, sig2 = mdl$sig2)
+  um(mdl$z, ar = ar, i = i, ma = ma, mu = mu, bc = bc, sig2 = mdl$sig2, ...)
   
 }
 
@@ -704,11 +723,13 @@ nabla.um <- function(um) {
 #'   only used when \code{dates = NULL}.
 #' @param calendar logical; if true, calendar effects are also estimated.
 #' @param easter logical; if true, Easter effect is also estimated.
+#' @param resid type of residuals (exact or conditional) used to identify 
+#' outliers.
 #' @param n.ahead a positive integer to extend the sample period of the
 #'   intervation variables with \code{n.ahead} observations, which could be
 #'   necessary to forecast the output.
-#' @param p.value estimates with a p-value greater than p.value are omitted.   
-#' @param ... additional arguments.   
+#' @param p.value estimates with a p-value greater than p.value are omitted.
+#' @param ... additional arguments.
 #' @return an object of class "\code{\link{tfm}}" or a table.
 #' @export
 outliers <- function (mdl, ...) { UseMethod("outliers") }
@@ -719,9 +740,11 @@ outliers <- function (mdl, ...) { UseMethod("outliers") }
 #' um1 <- um(Y, i = list(1, c(1, 12)), ma = list(1, c(1, 12)), bc = TRUE)
 #' outliers(um1)
 #' @export
-outliers.um <- function(mdl, z = NULL, dates = NULL, c = 3, calendar = FALSE, 
-                        easter = FALSE, n.ahead = 0, p.value = 1, ...) {
-  if (is.null(z)) z <- z.um(mdl)
+outliers.um <- function(mdl, z = NULL, dates = NULL, c = 3, calendar = FALSE,
+                        easter = FALSE, resid = c("exact", "cond"), n.ahead = 0, 
+                        p.value = 1, envir=NULL, ...) {
+  if (is.null (envir)) envir <- parent.frame ()
+  if (is.null(z)) z <- z.um(mdl, envir=envir)
   else if(!is.ts(z)) z <- ts(z)
   start <- start(z)
   freq <- frequency(z)
@@ -729,6 +752,10 @@ outliers.um <- function(mdl, z = NULL, dates = NULL, c = 3, calendar = FALSE,
     calendar <- FALSE
     easter <- FALSE
   }
+  if ((mdl$p > 50 || mdl$q > 50) && length(resid) > 1)
+    resid <- "cond"
+  resid <- match.arg(resid)
+  eres <- resid == "exact"
   
   if (is.null(dates)) indx = 0  
   else if (is.numeric(dates)) {
@@ -754,14 +781,15 @@ outliers.um <- function(mdl, z = NULL, dates = NULL, c = 3, calendar = FALSE,
   tfm1 <- NULL
   if (calendar||easter) {
     if (calendar)
-      tfm1 <- calendar.um(mdl, z, easter = easter, n.ahead = n.ahead)
+      tfm1 <- calendar.um(mdl, z, easter = easter, n.ahead = n.ahead,
+                          diff = diff, envir = envir)
     else
-      tfm1 <- easter.um(mdl, z, n.ahead)
+      tfm1 <- easter.um(mdl, z, n.ahead, envir = envir)
     N <- noise.tfm(tfm1, diff = FALSE)
     A <- outliersC(N, FALSE,  mu, tfm1$noise$phi, tfm1$noise$nabla, 
-                   tfm1$noise$theta, indx, abs(c))
+                   tfm1$noise$theta, indx, eres, abs(c))
   } else { 
-    A <- outliersC(z, mdl$bc,  mu, mdl$phi, mdl$nabla, mdl$theta, indx, abs(c))
+    A <- outliersC(z, mdl$bc,  mu, mdl$phi, mdl$nabla, mdl$theta, indx, eres, abs(c))
   }
   if (ncol(A) == 1) {
     warning("no outlier")
@@ -794,11 +822,11 @@ outliers.um <- function(mdl, z = NULL, dates = NULL, c = 3, calendar = FALSE,
       tf(p, w0 = df[i, 4], par.prefix = prefix)
     } else stop("unkown input")
   })
-  
+
   if (calendar||easter) xreg <- tfm1$xreg
   else xreg <- NULL
-  tfm1 <- tfm(xreg = xreg, inputs = tfi, noise = mdl)
-  if (p.value < 0.999) 
+  tfm1 <- tfm(xreg = xreg, inputs = tfi, noise = mdl, envir=envir, ...)
+  if (p.value < 0.999)
     tfm1 <- varsel.tfm(tfm1, p.value = p.value)
   tfm1
 }
@@ -874,7 +902,11 @@ pi.weights.um <- function(um, lag.max = 10, var.pi = FALSE, ...) {
 #' @param z an object of class \code{\link{ts}}.
 #' @param ori the origin of prediction. By default, it is the last observation.
 #' @param n.ahead number of steps ahead.
-#' @param level confidence level. 
+#' @param level confidence level.
+#' @param i transformation of the series \code{z} to be forecasted. It is a
+#' lagpol as those of a \code{\link{um}} object.  
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #' @param ... additional arguments.
 #' @return An object of class "\code{\link{tfm}}".
 #' @examples
@@ -883,20 +915,37 @@ pi.weights.um <- function(um, lag.max = 10, var.pi = FALSE, ...) {
 #' p <- predict(um1, n.ahead = 12)
 #' p
 #' plot(p, n.back = 60)
-#' 
+#'
 #' @export predict.um
 #' @export
-predict.um <- function(object, z = NULL, ori = NULL, n.ahead = 1, level = 0.95, ...) {
-  
+predict.um <- function(object, z = NULL, ori = NULL, n.ahead = 1, level = 0.95,
+                       i = NULL, envir=NULL, ...) {
+
+  if (is.null (envir)) envir <- parent.frame ()
   if (is.null(z)) {
     if (is.null(object$z)) stop("argument z required")
     else {
-      z <- eval(parse(text = object$z), .GlobalEnv)
-    } 
+      z <- eval(parse(text = object$z), envir)
+    }
   }
-  
+
   if (is.null(object$mu)) mu <- 0
   else mu <- object$mu
+  
+  if (!is.null(i)) {
+    i <- .lagpol0(i, "i", "delta", envir=envir)
+    nabla <- polyexpand(i)
+    nabla <- polydivC(object$nabla, nabla, FALSE)
+    object$nabla <- nabla
+    object$i <- list(as.lagpol(nabla))
+    mu <- mu*sum(nabla)
+    z <- ts(diffC(z, nabla, object$bc), end = end(z), frequency = frequency(z))
+    if (object$bc){
+      z <- z*100
+      object$sig2 <- object$sig2*100^2
+    }
+    object$bc <- FALSE
+  }
   
   if (is.null(ori)) ori <- length(z)
   if (n.ahead < 1) n.ahead <- 1
@@ -1046,6 +1095,8 @@ psi.weights.um <- function(um, lag.max = 10, var.psi = FALSE, ...) {
 #' @param object an object of class \code{um}.
 #' @param z an object of class \code{ts}.
 #' @param method exact/conditional residuals.
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #' @param ... additional arguments.
 #'
 #' @return An object of class \code{um}.
@@ -1056,16 +1107,17 @@ psi.weights.um <- function(um, lag.max = 10, var.psi = FALSE, ...) {
 #' r <- residuals(airl)
 #' summary(r)
 #' @export
-residuals.um <- function(object, z = NULL, method = c("exact", "cond"), ...) {
+residuals.um <- function(object, z = NULL, method = c("exact", "cond"), envir=NULL, ...) {
 
   stopifnot(inherits(object, "um"))
+  if (is.null (envir)) envir <- parent.frame ()
   if (is.null(z)) {
     if (is.null(object$z)) stop("argument z required")
     else {
-      z <- eval(parse(text = object$z), .GlobalEnv)
-    } 
+      z <- eval(parse(text = object$z), envir)
+    }
   }
-  
+
   method <- match.arg(method)
   if (!is.null(object$method)) method <- object$method
   
@@ -1146,16 +1198,19 @@ roots.um <- function(x, opr = c("arma", "ar", "ma", "i", "arima"), ...) {
 #' @export
 sim <- function (mdl, ...) { UseMethod("sim") }
 
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #' @rdname sim
 #' @param z0 initial conditions for the nonstationary series.
 #' @export
-sim.um <- function(mdl, n = 100, z0 = NULL, seed = NULL, ...) {
+sim.um <- function(mdl, n = 100, z0 = NULL, seed = NULL, envir=NULL, ...) {
   stopifnot(inherits(mdl, "um"), n > length(mdl$nabla))
+  if (is.null (envir)) envir <- parent.frame ()
   if (is.null(mdl$mu)) mu <- 0
   else mu <- mdl$mu
   if (is.null(z0)) {
     if (is.null(mdl$z)) z0 <- 0
-    else z0 <- eval(parse(text = mdl$z), .GlobalEnv)
+    else z0 <- eval(parse(text = mdl$z), envir)
   }
   if (!is.null(seed)) set.seed(seed)
   a <- rnorm(n, 0, sqrt(mdl$sig2))
@@ -1203,30 +1258,33 @@ spec.um <- function(um, n.freq = 501, ...) {
 #' @param z an object of class \code{ts}.
 #' @param method exact/conditional maximum likelihood.
 #' @param digits number of significant digits to use when printing.
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #' @param ... additional arguments.
-#' 
-#' @return 
+#'
+#' @return
 #' A list with the summary of the estimation and diagonosis.
 #' 
 #' @examples
 #' z <- AirPassengers
 #' airl <- um(z, i = list(1, c(1,12)), ma = list(1, c(1,12)), bc = TRUE)
 #' summary(airl)
-#' 
+#'
 #' @export
 summary.um <- function(object, z = NULL, method = c("exact", "cond"),
-                       digits = max(3L, getOption("digits") - 3L), ...) {
-  
+                       digits = max(3L, getOption("digits") - 3L), envir=NULL, ...) {
+
   stopifnot(inherits(object, "um"))
+  if (is.null (envir)) envir <- parent.frame ()
   model.name <- deparse(substitute(object))
-  
+
   if (is.null(z)) {
     if (is.null(object$z)) stop("argument z required")
     else {
-      z <- eval(parse(text = object$z), .GlobalEnv)
-    } 
+      z <- eval(parse(text = object$z), envir)
+    }
   }
-  
+
   method <- match.arg(method)
   if (!is.null(object$method)) method <- object$method
   
@@ -1358,9 +1416,9 @@ print.summary.um <- function(x, stats = TRUE,
     w.left <- 20
     w.right <- 10
     cat(format("Total nobs", width = w.left, justify = "left"),
-        format(x$N, digits = 0, width = w.right, justify = "right"), 
+        format(x$N, digits = NULL, width = w.right, justify = "right"), 
         format("Effective nobs", width = w.left, justify = "left"),
-        format(x$n, digits = 0, width = w.right, justify = "right"), "\n")
+        format(x$n, digits = NULL, width = w.right, justify = "right"), "\n")
     
     cat(format("log likelihood", width = w.left, justify = "left"),
         format(x$logLik, digits = digits, width = w.right, justify = "right"),
@@ -1426,6 +1484,8 @@ print.summary.um <- function(x, stats = TRUE,
 #' @export
 seasadj <- function (mdl, ...) { UseMethod("seasadj") }
 
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #' @rdname seasadj
 #' @examples
 #' Y <- AirPassengers
@@ -1433,16 +1493,17 @@ seasadj <- function (mdl, ...) { UseMethod("seasadj") }
 #' Y <- seasadj(um1)
 #' ide(Y)
 #' @export
-seasadj.um <- 
-function(mdl, z = NULL, method = c("mixed", "forecast", "backcast"), ...) 
+seasadj.um <-
+function(mdl, z = NULL, method = c("mixed", "forecast", "backcast"), envir=NULL, ...)
 {
   stopifnot(mdl$p+mdl$d > 1)
-  
+  if (is.null (envir)) envir <- parent.frame ()
+
   if (is.null(z)) {
     if (is.null(mdl$z)) stop("argument z required")
     else {
-      z <- eval(parse(text = mdl$z), .GlobalEnv)
-    } 
+      z <- eval(parse(text = mdl$z), envir)
+    }
   }
   method <- match.arg(method)
   if (is.null(mdl$mu)) mu <- 0
@@ -1739,22 +1800,25 @@ tsdiag.um <- function(object, gof.lag = 10, ...)
 #' um1 <- um(Z, i = list(1, c(1, 12)), ma = list(1, c(1, 12)), bc = TRUE)
 #' uc <- ucomp(um1)
 #' @export
-#' 
+#'
 ucomp <- function (mdl, ...) { UseMethod("ucomp") }
 
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #' @rdname ucomp
 #' @param z an object of class \code{\link{ts}}.
 #' @export
-ucomp.um <- 
-  function(mdl, z = NULL, method = c("mixed", "forecast", "backcast"), ...) 
+ucomp.um <-
+  function(mdl, z = NULL, method = c("mixed", "forecast", "backcast"), envir=NULL, ...)
   {
     stopifnot(mdl$p+mdl$d > 1)
-    
+    if (is.null (envir)) envir <- parent.frame ()
+
     if (is.null(z)) {
       if (is.null(mdl$z)) stop("argument z required")
       else {
-        z <- eval(parse(text = mdl$z), .GlobalEnv)
-      } 
+        z <- eval(parse(text = mdl$z), envir)
+      }
     }
     method <- match.arg(method)
     
@@ -1865,15 +1929,16 @@ plot.ucomp.um <- function(x, main = NULL, ...) {
 
 # Non-exported functions
 
-backcast.um <- function(um, z = NULL, n.back = NULL) {
-  
+backcast.um <- function(um, z = NULL, n.back = NULL, envir=NULL) {
+
+  if (is.null (envir)) envir <- parent.frame ()
   if (is.null(z)) {
     if (is.null(um$z)) stop("argument z required")
     else {
-      z <- eval(parse(text = um$z), .GlobalEnv)
-    } 
+      z <- eval(parse(text = um$z), envir)
+    }
   }
-  
+
   if (is.null(n.back) || n.back < 1) stop("argument n.back required")
   
   if (!is.ts(z)) z <- ts(z)
@@ -1920,17 +1985,18 @@ eq.um <-function(um, digits = 2, arima = TRUE) {
 }
 
 
-hessian.um <- function(um, z = NULL, method = c("exact", "cond")) {
+hessian.um <- function(um, z = NULL, method = c("exact", "cond"), envir=NULL) {
   stopifnot(inherits(um, "um"))
+  if (is.null (envir)) envir <- parent.frame ()
   if (!is.stationary.um(um)) stop("Non-stationary AR preestimates")
   #if (!is.invertible.um(um)) stop("Non-invertible MA preestimates")
-  
+
   method <- match.arg(method)
   exact <- method == "exact"
-  
+
   if (is.null(z)) {
     if (is.null(um$z)) stop("argment z required")
-    else z <- eval(parse(text = um$z), .GlobalEnv)
+    else z <- eval(parse(text = um$z), envir)
   } else {
     um$z <- deparse(substitute(z))
   }
@@ -2041,6 +2107,8 @@ update.um <- function(um, param) {
 #' @param z an object of class \code{ts}.
 #' @param wtilde logical. If TRUE the mean \code{mu} is subtracted from the
 #'   stationary series.
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #' @return an object of class \code{ts}.
 #' @seealso \code{\link{z.um}}.
 #' @examples
@@ -2048,8 +2116,9 @@ update.um <- function(um, param) {
 #' um1 <- um(Z, bc = TRUE, i = list(1, c(1, 12)), ma = "(1 - 0.8B)(1 - 0.8B12)")
 #' w(um1)
 #' @noRd
-w.um <- function(um, z = NULL, wtilde = FALSE) {
-  z <- z.um(um, z)
+w.um <- function(um, z = NULL, wtilde = FALSE, envir=NULL) {
+  if (is.null (envir)) envir <- parent.frame ()
+  z <- z.um(um, z, envir=envir)
   w <- as.vector(diffC(z, um$nabla, um$bc))
   if (wtilde & !is.null(um$mu)) w <- w - um$mu
   if (is.ts(z)) w <- ts(w, end = end(z), frequency = frequency(z))
@@ -2063,6 +2132,8 @@ w.um <- function(um, z = NULL, wtilde = FALSE) {
 #'
 #' @param um an object of class \code{um}.
 #' @param z an object of class \code{ts}.
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
 #' @return an object of class \code{ts}.
 #' @note This function is internally used by many methods of the \code{um} class
 #'   to retrive the time series associated with the ARIMA model or to assign one
@@ -2073,13 +2144,14 @@ w.um <- function(um, z = NULL, wtilde = FALSE) {
 #' z(um1)
 #' z(um1, Z)
 #' @noRd
-z.um <- function(um, z = NULL) {
+z.um <- function(um, z = NULL, envir=NULL) {
   stopifnot(inherits(um, "um"))
+  if (is.null (envir)) envir <- parent.frame ()
   if (is.null(z)) {
     if (is.null(um$z)) stop("argment z required")
     else {
-      z <- eval(parse(text = um$z), .GlobalEnv)
-    } 
+      z <- eval(parse(text = um$z), envir)
+    }
   }
   return(z)
 }

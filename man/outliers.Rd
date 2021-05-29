@@ -13,8 +13,10 @@
   c = 3,
   calendar = FALSE,
   easter = FALSE,
+  resid = c("exact", "cond"),
   n.ahead = NULL,
   p.value = 1,
+  envir = NULL,
   ...
 )
 
@@ -27,8 +29,10 @@ outliers(mdl, ...)
   c = 3,
   calendar = FALSE,
   easter = FALSE,
+  resid = c("exact", "cond"),
   n.ahead = 0,
   p.value = 1,
+  envir = NULL,
   ...
 )
 }
@@ -48,11 +52,17 @@ only used when \code{dates = NULL}.}
 
 \item{easter}{logical; if true, Easter effect is also estimated.}
 
+\item{resid}{type of residuals (exact or conditional) used to identify 
+outliers.}
+
 \item{n.ahead}{a positive integer to extend the sample period of the
 intervation variables with \code{n.ahead} observations, which could be
 necessary to forecast the output.}
 
 \item{p.value}{estimates with a p-value greater than p.value are omitted.}
+
+\item{envir}{environment in which the function arguments are evaluated.
+If NULL the calling environment of this function will be used.}
 
 \item{...}{additional arguments.}
 

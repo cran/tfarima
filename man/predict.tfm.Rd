@@ -4,10 +4,26 @@
 \alias{predict.tfm}
 \title{Forecasting with transfer function models}
 \usage{
-\method{predict}{tfm}(object, y = NULL, ori = NULL, n.ahead = NULL, level = 0.95, ...)
+\method{predict}{tfm}(
+  object,
+  newdata = NULL,
+  y = NULL,
+  ori = NULL,
+  n.ahead = NULL,
+  level = 0.95,
+  i = NULL,
+  envir = NULL,
+  ...
+)
 }
 \arguments{
 \item{object}{an object of class \code{\link{um}}.}
+
+\item{newdata}{new data for the predictors for the forecast period. This is
+a matrix if there is more than one predictor. The number of columns is
+equal to the number of predictors, the number of rows equal to
+\code{n.ahead}. If there is one predictor only the data may be provided
+alternatively as a vector.}
 
 \item{y}{an object of class \code{\link{ts}}.}
 
@@ -17,9 +33,22 @@
 
 \item{level}{confidence level.}
 
+\item{i}{transformation of the series \code{y} to be forecasted. It is a
+lagpol as those of a \code{\link{um}} object.}
+
+\item{envir}{environment in which the function arguments are evaluated.
+If NULL the calling environment of this function will be used.}
+
 \item{...}{additional arguments.}
 }
 \description{
 \code{predict} computes point and interval predictions for a time series
 based on a \code{tfm} object.
+}
+\details{
+Forecasts for the inputs of a \code{tfm} object can be provided
+in tree ways: (1) extending the time series with forecasts so that the length
+of the intput is greater than the length of the output, (2) computed 
+internally from the \code{um} object associated to the input and (3) with 
+the \code{newdata} argument.
 }

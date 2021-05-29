@@ -11,7 +11,10 @@
   y = NULL,
   method = c("exact", "cond"),
   lag.max = NULL,
+  lags.at = NULL,
+  freq.at = NULL,
   std = TRUE,
+  envir = NULL,
   ...
 )
 
@@ -22,7 +25,10 @@ diagchk(mdl, ...)
   z = NULL,
   method = c("exact", "cond"),
   lag.max = NULL,
+  lags.at = NULL,
+  freq.at = NULL,
   std = TRUE,
+  envir = NULL,
   ...
 )
 }
@@ -35,7 +41,15 @@ diagchk(mdl, ...)
 
 \item{lag.max}{number of lags for ACF/PACF.}
 
+\item{lags.at}{the lags of the ACF/PACF at which tick-marks are to be drawn.}
+
+\item{freq.at}{the frequencies of the (cum) periodogram at at which
+tick-marks are to be drawn.}
+
 \item{std}{logical. If TRUE standardized residuals are shown.}
+
+\item{envir}{environment in which the function arguments are evaluated.
+If NULL the calling environment of this function will be used.}
 
 \item{...}{additional arguments.}
 
