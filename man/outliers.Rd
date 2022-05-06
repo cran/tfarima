@@ -9,6 +9,7 @@
 \method{outliers}{tfm}(
   mdl,
   y = NULL,
+  types = c("AO", "LS", "TC", "IO"),
   dates = NULL,
   c = 3,
   calendar = FALSE,
@@ -16,6 +17,7 @@
   resid = c("exact", "cond"),
   n.ahead = NULL,
   p.value = 1,
+  tc.fix = TRUE,
   envir = NULL,
   ...
 )
@@ -24,7 +26,8 @@ outliers(mdl, ...)
 
 \method{outliers}{um}(
   mdl,
-  z = NULL,
+  y = NULL,
+  types = c("AO", "LS", "TC", "IO"),
   dates = NULL,
   c = 3,
   calendar = FALSE,
@@ -32,6 +35,7 @@ outliers(mdl, ...)
   resid = c("exact", "cond"),
   n.ahead = 0,
   p.value = 1,
+  tc.fix = TRUE,
   envir = NULL,
   ...
 )
@@ -39,7 +43,10 @@ outliers(mdl, ...)
 \arguments{
 \item{mdl}{an object of class \code{\link{um}} or \code{\link{tfm}}.}
 
-\item{y}{an object of class \code{ts}}
+\item{y}{an object of class \code{ts}, optional.}
+
+\item{types}{a vector with the initials of the outliers to be detected,
+c("AO", "LS", "TC", "IO").}
 
 \item{dates}{a list of dates c(year, season). If \code{dates = NULL}, an
 iterative detection process is conducted.}
@@ -52,21 +59,22 @@ only used when \code{dates = NULL}.}
 
 \item{easter}{logical; if true, Easter effect is also estimated.}
 
-\item{resid}{type of residuals (exact or conditional) used to identify 
+\item{resid}{type of residuals (exact or conditional) used to identify
 outliers.}
 
 \item{n.ahead}{a positive integer to extend the sample period of the
-intervation variables with \code{n.ahead} observations, which could be
+intervention variables with \code{n.ahead} observations, which could be
 necessary to forecast the output.}
 
 \item{p.value}{estimates with a p-value greater than p.value are omitted.}
 
+\item{tc.fix}{a logical value indicating if the AR coefficient in the
+transfer function of the TC is estimated or fix.}
+
 \item{envir}{environment in which the function arguments are evaluated.
 If NULL the calling environment of this function will be used.}
 
-\item{...}{additional arguments.}
-
-\item{z}{a time series.}
+\item{...}{other arguments.}
 }
 \value{
 an object of class "\code{\link{tfm}}" or a table.

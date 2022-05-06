@@ -15,19 +15,19 @@
 #' @param sig2 variance of the error.
 #' @param bc logical. If TRUE logs are taken.
 #' @param fit logical. If TRUE, model is fitted.
-#' @param envir environment in which the function arguments are evaluated.
-#'    If NULL the calling environment of this function will be used.
+#' @param envir the environment in which to look for the time series z when it
+#'   is passed as a character string.
 #' @param ... additional arguments.
 #'
 #' @return An object of class \code{um}.
-#' 
+#'
 #' @references
 #'
 #' Box, G.E.P., Jenkins, G.M., Reinsel, G.C. and Ljung, G.M. (2015) Time Series
 #' Analysis: Forecasting and Control. John Wiley & Sons, Hoboken.
 #'
 #' @examples
-#' 
+#'
 #' ar1 <- um(ar = "(1 - 0.8B)")
 #' ar2 <- um(ar = "(1 - 1.4B + 0.8B^2)")
 #' ma1 <- um(ma = "(1 - 0.8B)")
@@ -35,11 +35,10 @@
 #' arma11 <- um(ar = "(1 - 1.4B + 0.8B^2)", ma = "(1 - 0.8B)")
 #'
 #' @export
-um <- function(z = NULL, ar = NULL, i = NULL, ma = NULL, mu = NULL,
-               sig2 = 1.0, bc = FALSE, fit = TRUE, envir=NULL, ...) {
+um <- function(z = NULL, ar = NULL, i = NULL, ma = NULL, mu = NULL, sig2 = 1.0, 
+               bc = FALSE, fit = TRUE, envir = parent.frame (), ...) {
 
   call <- match.call()
-  if (is.null (envir)) envir <- parent.frame ()
   if (is.numeric(z)){
     z <- deparse(substitute(z))
   }
@@ -95,7 +94,6 @@ um <- function(z = NULL, ar = NULL, i = NULL, ma = NULL, mu = NULL,
   return(mod)
   
 }
-
 
 #' Convert \code{arima} into \code{um}.
 #'
@@ -170,7 +168,7 @@ as.um <- function(arima) {
 #'
 #' \code{autocov} computes the autocovariances of an ARMA model.
 #'
-#' @param um an object of class \code{um}.
+#' @param mdl an object of class \code{um} or \code{stsm}.
 #' @param lag.max maximum lag for autocovariances.
 #' @param ... additional arguments.
 #'  
@@ -185,13 +183,13 @@ as.um <- function(arima) {
 #' autocov(ar1, lag.max = 13)
 #' 
 #' @export
-autocov <- function (um, ...) { UseMethod("autocov") }
+autocov <- function (mdl, ...) { UseMethod("autocov") }
 
 #' @rdname autocov
 #' @export
-autocov.um <- function(um, lag.max = 10, ...) {
-  stopifnot(inherits(um, "um"))
-  g <- as.numeric( tacovC(um$phi, um$theta, um$sig2, lag.max) )
+autocov.um <- function(mdl, lag.max = 10, ...) {
+  stopifnot(inherits(mdl, "um"))
+  g <- as.numeric( tacovC(mdl$phi, mdl$theta, mdl$sig2, lag.max) )
   names(g) <- paste("gamma", 0:lag.max, sep = "")
   g
 }
@@ -236,67 +234,117 @@ autocorr.um <- function(um, lag.max = 10, par = FALSE, ...) {
   }
 }
 
-#' Calendar effects
+#' Coefficients of a univariate model
 #'
-#' \code{calendar} extends the ARIMA model \code{um} by estimating a transfer
-#' function model with seven deterministic variables to capture the calendar
-#' variation in a monthly time series. Two equivalent representations are
-#' available: (1) D1, D2, ..., D7, (2) L, D1-D7, ..., D6-D7 where D1, D2, ...,
-#' D7 are deterministic variables representing the number of Mondays, Tuesdays,
-#' ..., Sundays, L = D1 + D2 + ... + D7 is the of the month. Optionally, a
-#' deterministic variable to estimate the Easter effect can also be included.
+#' \code{coef} extracts the "coefficients" from a um object.
 #'
-#' @param um an object of class \code{\link{um}}.
-#' @param z a time series.
-#' @param form representation for calendar effects: \code{form = td} form (1)
-#'   above, \code{form = dif} form (1).
-#' @param easter logical. If \code{TRUE} an Easter effect is also estimated.
-#' @param n.ahead a positive integer to extend the sample period of the
-#'   deterministic variables with \code{n.ahead} observations, which could be
-#'   necessary to forecast the output.
-#' @param p.value estimates with a p-value greater than p.value are omitted.
-#' @param envir environment in which the function arguments are evaluated.
-#'    If NULL the calling environment of this function will be used.
-#' @param ... additional arguments.
+#' @param object a \code{um} object.
+#' @param ... other arguments.
 #'
-#' @return An object of class "\code{\link{tfm}}".
+#' @return A numeric vector.
+#'
+#' @export
+coef.um <- function(object, ...) {
+  param.um(object)
+}
+
+#' \code{setinputs} adds new inputs into a transfer function model.     
+#'
+#' @param mdl a \code{umm} or \code{tfm} object.
+#' @param xreg a matrix of inputs.
+#' @param inputs a list of tf objects.
+#' @param y an optional ts object.
+#' @param envir an environment.
+#' @param ... other arguments.
 #' 
-#' @references W. R. Bell & S. C. Hillmer (1983) Modeling Time Series with
-#' Calendar Variation, Journal of the American Statistical Association, 78:383,
-#' 526-534, DOI: 10.1080/01621459.1983.10478005
+#' @return A \code{tfm} object.
+#' 
+#' @export
+setinputs <- function (mdl, ...) { UseMethod("setinputs") }
+
+#' @rdname setinputs
+#' @export
+setinputs.um <- function(mdl, xreg = NULL, inputs = NULL, y = NULL, 
+                          envir = NULL, ...) {
+  if (is.null (envir)) envir <- parent.frame ()
+  if (!is.null(y)) mdl$z <- deparse(substitute(y))
+  y <- z.um(mdl, z = y, envir = envir)
+  tfm1 <- tfm(output = y, noise = mdl, fit = FALSE, new.name = FALSE)
+  setinputs.tfm(tfm1, xreg, inputs)  
+}
+
+#'Calendar effects
+#'
+#'\code{calendar} extends the ARIMA model \code{um} by including a set of
+#'deterministic variables to capture the calendar variation in a monthly time
+#'series. Two equivalent representations are available: (i) D0, D1, ..., D6,
+#'(ii) L, D1-D0, ..., D6-D0 where D0, D2, ..., D6 are deterministic variables
+#'representing the number of Sundays, Mondays, ..., Saturdays, L = D0 + D1 + ...
+#'+ D6 is the of the month. Alternatively, the Leap Year indicator (LPY) can be
+#'included instead of L. The seven trading days can also be compacted into two
+#'variables: week days and weekends. Optionally, a deterministic variable to
+#'estimate the Easter effect can also be included, see "\code{\link{easter}}".
+#'
+#'@param mdl an object of class \code{\link{um}} or \code{\link{tfm}}.
+#'@param y a time series.
+#'@param form representation for calendar effects: (1) \code{form = dif}, L,
+#'  D1-D0, ..., D6-D0; (2) \code{form = td}, LPY, D1-D0, ..., D6-D0; (3)
+#'  \code{form = td7}, D0, D2, ..., D6; (4) \code{form = td6}, D1, D2, ..., D6;
+#'  (5) \code{form = wd}, (D1+...+D5) - 2(D6+D0)/5.
+#'@param ref a integer indicating the the reference day. By default, ref = 0.
+#'@param lom,lpyear a logical value indicating whether or not to include the
+#'  lom/lead year indicator.
+#'@param easter logical. If \code{TRUE} an Easter effect is also estimated.
+#'@param len the length of the Easter, integer.
+#'@param easter.mon logical. TRUE indicates that Easter Monday is a public
+#'  holiday.
+#'@param n.ahead a positive integer to extend the sample period of the
+#'  deterministic variables with \code{n.ahead} observations, which could be
+#'  necessary to forecast the output.
+#'@param p.value estimates with a p-value greater than p.value are omitted.
+#'@param envir environment in which the function arguments are evaluated. If
+#'  NULL the calling environment of this function will be used.
+#'@param ... other arguments.
+#'
+#'@return An object of class "\code{\link{tfm}}".
+#'
+#'@references W. R. Bell & S. C. Hillmer (1983) Modeling Time Series with
+#'  Calendar Variation, Journal of the American Statistical Association, 78:383,
+#'  526-534, DOI: 10.1080/01621459.1983.10478005
 #'
 #' @examples
 #' Y <- tfarima::rsales
 #' um1 <- um(Y, i = list(1, c(1, 12)), ma = list(1, c(1, 12)), bc = TRUE)
 #' tfm1 <- calendar(um1)
-#' 
-#' @export
-calendar <- function (um, ...) { UseMethod("calendar") }
+#'
+#'@export
+calendar <- function (mdl, ...) { UseMethod("calendar") }
 
 #' @rdname calendar
 #' @export
 calendar.um <-
-function(um, z = NULL, form = c("dif", "td"), easter = FALSE, n.ahead = 0,
-         p.value = 1, envir=NULL, ...)
+function(mdl, y = NULL, form = c("dif", "td", "td7", "td6", "wd"),
+         ref = 0, lom = TRUE, lpyear = TRUE, easter = FALSE, len = 4, 
+         easter.mon = FALSE, n.ahead = 0, p.value = 1, envir = NULL, ...)
 {
   if (is.null (envir)) envir <- parent.frame ()
-  if (is.null(z)) z <- z.um(um, envir=envir)
-  if (frequency(z) != 12) stop("function only implemented for monthly ts")
-  form <- match.arg(form)
+  if (is.null(y)) y <- z.um(mdl, envir = envir)
+  else mdl$z <- deparse(substitute(y))
+  if (frequency(y) != 12) stop("function only implemented for monthly ts")
 
   n.ahead <- abs(n.ahead)
-  xreg <- CalendarVar(z, form, easter, n.ahead)
-  tfm1 <- tfm(xreg = xreg, noise = um, envir=envir)
+  xreg <- CalendarVar(y, form, ref, lom, lpyear, easter, len, easter.mon, n.ahead)
+  tfm1 <- tfm(y, xreg = xreg, noise = mdl, new.name = FALSE, envir = envir, ...)
   if (p.value < 0.999) {
     p <- summary.tfm(tfm1, p.values = TRUE)
     p <- (p[1:ncol(xreg)] <= p.value)
     if (all(p)) return(tfm1)
     if (any(p)) {
       xreg <- xreg[, p]
-      tfm1 <- tfm(xreg = xreg, noise = tfm1$noise, envir=envir)
+      tfm1 <- tfm(y, xreg = xreg, noise = tfm1$noise, envir=envir, new.name = FALSE, ...)
       return(tfm1)
     }
-    return(um)
+    return(mdl)
   }
   return(tfm1)
 }
@@ -359,7 +407,8 @@ diagchk.um <- function(mdl, z = NULL, method = c("exact", "cond"),
 #' display(list(um1, um2))
 #' 
 #' @export 
-display <- function (um, ...) { UseMethod("display") }
+display <- function (um, ...)
+UseMethod("display")
 
 #' @rdname display
 #' @export
@@ -462,12 +511,14 @@ display.default <- function(um, ...) {
 #'
 #' @param um an object of class \code{\link{um}}.
 #' @param z a time series.
+#' @param len a positive integer specifying the duration of the Easter.
+#' @param easter.mon logical. If TRUE Easter Monday is also taken into account. 
 #' @param n.ahead a positive integer to extend the sample period of the
 #'   Easter regression variable with \code{n.ahead} observations, which could be
 #'   necessary to forecast the output.
 #' @param envir environment in which the function arguments are evaluated.
 #'    If NULL the calling environment of this function will be used.
-#' @param ... additional arguments.
+#' @param ... other arguments.
 #'
 #' @return An object of class "\code{\link{tfm}}".
 #' 
@@ -480,15 +531,22 @@ easter <- function (um, ...) { UseMethod("easter") }
 
 #' @rdname easter
 #' @export
-easter.um <- function(um, z = NULL, n.ahead = 0, envir=NULL, ...) {
+easter.um <- function(um, z = NULL, len = 4, easter.mon = FALSE, n.ahead = 0, 
+                      envir = NULL, ...) {
+  call <- match.call()
   if (is.null (envir)) envir <- parent.frame ()
-  if (is.null(z)) z <- z.um(um, envir=envir)
+  if (is.null(z)) 
+    z <- z.um(um, envir = envir)
+  else
+    um$z <- deparse(substitute(z))
+  
   if (frequency(z) != 12) stop("function only implemented for monthly ts")
-
   n.ahead <- abs(n.ahead)
-  easter <- EasterVar(z, n.ahead = n.ahead)
-  tfm(xreg = easter, noise = um, envir=envir)
-
+  xreg <- matrix(EasterVar(z, len, easter.mon, n.ahead = n.ahead), ncol = 1)
+  colnames(xreg) <- paste0("Easter", len, ifelse(easter.mon, "M", ""))
+  tfm1 <- tfm(z, xreg = xreg, noise = um, envir = envir, new.name = FALSE)
+  tfm1$call <- call
+  tfm1
 }
 
 
@@ -528,7 +586,7 @@ fit.um <- function(mdl, z = NULL, method = c("exact", "cond"),
   stopifnot(inherits(mdl, "um"))
   if (is.null (envir)) envir <- parent.frame ()
   if (!is.stationary.um(mdl)) stop("Non-stationary AR preestimates")
-  if (!is.invertible.um(mdl)) stop("Non-invertible MA preestimates")
+  if (!is.invertible.um(mdl)) warning("Non-invertible MA preestimates")
   if ((mdl$p > 50 || mdl$q > 50) && length(method) > 1) method <- "cond"
   method <- match.arg(method)
   exact <- method == "exact"
@@ -707,6 +765,37 @@ nabla.um <- function(um) {
   as.lagpol(um$nabla)
 }
 
+#' Intervention analysis/Outlier treatment
+#'
+#' \code{intervention} estimates the effect of a intervention at a known time.
+#'
+#' @param mdl an object of class \code{\link{um}} or \code{\link{tfm}}.
+#' @param y a "ts" object, optional.
+#' @param type the type intervention (pulse, step, ramp) or the type of outlier
+#'   (AO, LS, TC, IO).
+#' @param time the date of the intervention, in format c(year, season).
+#' @param n.ahead a positive integer to extend the sample period of the
+#'   intervention variable with \code{n.ahead} observations, which could be
+#'   necessary to forecast the output.
+#' @param envir the environment in which to look for the time series z when it
+#'   is passed as a character string.
+#' @param ... additional arguments.
+#' @return an object of class "\code{\link{tfm}}" or a table.
+#'
+#' @export
+intervention <- function (mdl, ...) { UseMethod("intervention") }
+
+#' @rdname intervention
+#' @export
+intervention.um <- function(mdl, y = NULL, type, time, n.ahead = 0, 
+                             envir = parent.frame (), ...) {
+  if (!is.null(y)) mdl$z <- deparse(substitute(y))
+  y <- z.um(mdl, y, envir)
+  tfm1 <- tfm(y, noise = mdl, fit = FALSE, new.name = FALSE, envir = envir)
+  intervention.tfm(tfm1, NULL, type, time, n.ahead, envir, ...)
+}
+  
+
 #' Outliers detection at known/unknown dates
 #'
 #' \code{outliers} performs a detection of four types of anomalies (AO, TC, LS
@@ -715,7 +804,9 @@ nabla.um <- function(um) {
 #' Chen and Liu (1993) is conducted.
 #'
 #' @param mdl an object of class \code{\link{um}} or \code{\link{tfm}}.
-#' @param z a time series.
+#' @param y an object of class \code{ts}, optional.
+#' @param types a vector with the initials of the outliers to be detected,
+#'   c("AO", "LS", "TC", "IO").
 #' @param dates a list of dates c(year, season). If \code{dates = NULL}, an
 #'   iterative detection process is conducted.
 #' @param c a positive constant to compare the z-ratio of the effect of an
@@ -723,13 +814,17 @@ nabla.um <- function(um) {
 #'   only used when \code{dates = NULL}.
 #' @param calendar logical; if true, calendar effects are also estimated.
 #' @param easter logical; if true, Easter effect is also estimated.
-#' @param resid type of residuals (exact or conditional) used to identify 
-#' outliers.
+#' @param resid type of residuals (exact or conditional) used to identify
+#'   outliers.
 #' @param n.ahead a positive integer to extend the sample period of the
-#'   intervation variables with \code{n.ahead} observations, which could be
+#'   intervention variables with \code{n.ahead} observations, which could be
 #'   necessary to forecast the output.
 #' @param p.value estimates with a p-value greater than p.value are omitted.
-#' @param ... additional arguments.
+#' @param tc.fix a logical value indicating if the AR coefficient in the
+#'   transfer function of the TC is estimated or fix.
+#' @param envir environment in which the function arguments are evaluated.
+#'    If NULL the calling environment of this function will be used.
+#' @param ... other arguments.
 #' @return an object of class "\code{\link{tfm}}" or a table.
 #' @export
 outliers <- function (mdl, ...) { UseMethod("outliers") }
@@ -740,95 +835,16 @@ outliers <- function (mdl, ...) { UseMethod("outliers") }
 #' um1 <- um(Y, i = list(1, c(1, 12)), ma = list(1, c(1, 12)), bc = TRUE)
 #' outliers(um1)
 #' @export
-outliers.um <- function(mdl, z = NULL, dates = NULL, c = 3, calendar = FALSE,
-                        easter = FALSE, resid = c("exact", "cond"), n.ahead = 0, 
-                        p.value = 1, envir=NULL, ...) {
+outliers.um <- function(mdl, y = NULL, types = c("AO", "LS", "TC", "IO"), 
+                        dates = NULL, c = 3, calendar = FALSE, easter = FALSE, 
+                        resid = c("exact", "cond"), n.ahead = 0, 
+                        p.value = 1, tc.fix = TRUE, envir = NULL, ...) {
   if (is.null (envir)) envir <- parent.frame ()
-  if (is.null(z)) z <- z.um(mdl, envir=envir)
-  else if(!is.ts(z)) z <- ts(z)
-  start <- start(z)
-  freq <- frequency(z)
-  if( freq < 2) {
-    calendar <- FALSE
-    easter <- FALSE
-  }
-  if ((mdl$p > 50 || mdl$q > 50) && length(resid) > 1)
-    resid <- "cond"
-  resid <- match.arg(resid)
-  eres <- resid == "exact"
-  
-  if (is.null(dates)) indx = 0  
-  else if (is.numeric(dates)) {
-    if (length(dates) == 2 && (dates[2] >= 1 && dates[2] <= freq)) {
-      indx <- (dates[1] - start[1] + 1)*freq - (start[2] - 1) - (freq - dates[2])
-    } 
-    else {
-      indx <- dates
-    }
-  } else if (is.list(dates)) { 
-    indx <- sapply(dates, function(x) {
-      if (freq > 1)
-        (x[1] - start[1] + 1)*freq - (start[2] - 1) - (freq - x[2])
-      else 
-        (date[1] - start[1] + 1)*freq
-    })
-  } else stop("invalid stop argument")
-  indx <- unique(indx)
-  
-  if (is.null(mdl$mu)) mu <- 0
-  else mu <- mdl$mu
-  
-  tfm1 <- NULL
-  if (calendar||easter) {
-    if (calendar)
-      tfm1 <- calendar.um(mdl, z, easter = easter, n.ahead = n.ahead,
-                          diff = diff, envir = envir)
-    else
-      tfm1 <- easter.um(mdl, z, n.ahead, envir = envir)
-    N <- noise.tfm(tfm1, diff = FALSE)
-    A <- outliersC(N, FALSE,  mu, tfm1$noise$phi, tfm1$noise$nabla, 
-                   tfm1$noise$theta, indx, eres, abs(c))
-  } else { 
-    A <- outliersC(z, mdl$bc,  mu, mdl$phi, mdl$nabla, mdl$theta, indx, eres, abs(c))
-  }
-  if (ncol(A) == 1) {
-    warning("no outlier")
-    if (is.null(tfm1)) return(mdl)
-    else return(tfm1)
-  }
-  
-  df <- data.frame(obs = A[, 1], date = YearSeason(z, 2)[A[, 1]],
-                   type = A[, 2], effect = A[, 3], t.ratio = A[, 4], 
-                   w1 = A[, 5], t.w1 = A[, 6])
-  df[[3]] <- factor(df[[3]], levels = 1:4, labels = c("IO", "AO", "LS", "TC"))
-  
-  n <- length(z)
-  if (!is.null(n.ahead)) n <- n + n.ahead
-  
-  tfi <- lapply(1:nrow(df), function(i) {
-    p <- double(n)
-    p[df[i, 1]] <- 1
-    p <- ts(p, start = start, frequency = freq)
-    prefix <- paste(df[i, 3], df[i, 2], sep = "")
-    if (df[i, 3] == "IO") 
-      tf(p, w0 = df[i, 4], ma = mdl$ma, ar = c(mdl$i, mdl$ar), par.prefix = prefix)
-    else if (df[i, 3] == "AO") 
-      tf(p, w0 = df[i, 4], par.prefix = prefix)
-    else if (df[i, 3] == "TC") 
-      tf(p, w0 = df[i, 4], ar = "1 - 0.6B", par.prefix = prefix)
-    else if (df[i, 3] == "LS") {
-      p <- cumsum(p)
-      p <- ts(p, start = start, frequency = freq)
-      tf(p, w0 = df[i, 4], par.prefix = prefix)
-    } else stop("unkown input")
-  })
-
-  if (calendar||easter) xreg <- tfm1$xreg
-  else xreg <- NULL
-  tfm1 <- tfm(xreg = xreg, inputs = tfi, noise = mdl, envir=envir, ...)
-  if (p.value < 0.999)
-    tfm1 <- varsel.tfm(tfm1, p.value = p.value)
-  tfm1
+  if (!is.null(y)) mdl$z <- deparse(substitute(y))
+  y <- z.um(mdl, y, envir)
+  tfm1 <- tfm(y, noise = mdl, fit = FALSE, new.name = FALSE, envir = envir)
+  outliers.tfm(tfm1, NULL, types, dates, c, calendar, easter, resid, n.ahead, 
+               p.value, tc.fix, envir, ...)
 }
 
 
@@ -1051,7 +1067,10 @@ plot.predict.um <- function(x, n.back = 0, xlab = "Time", ylab = "z", main = "",
 print.um <- function(x, ...) {
   stopifnot(inherits(x, "um"))
   if (is.null(names(x$sig2))) names(x$sig2) <- "sig2"
-  print( c(unlist(x$param), x$sig2) )
+  if (is.null(x$optim))
+    print( c(unlist(x$param), x$sig2) )
+  else
+    print(summary(x), short = TRUE, ...)
 }
 
 
@@ -1192,7 +1211,7 @@ roots.um <- function(x, opr = c("arma", "ar", "ma", "i", "arima"), ...) {
 #' @param mdl an object of class \code{um} or \code{tfm}.
 #' @param n number of observations.
 #' @param seed an integer.
-#' @param ... additional arguments.
+#' @param ... other arguments.
 #' @return 
 #' An object of class \code{ts}.
 #' @export
@@ -1202,10 +1221,12 @@ sim <- function (mdl, ...) { UseMethod("sim") }
 #'    If NULL the calling environment of this function will be used.
 #' @rdname sim
 #' @param z0 initial conditions for the nonstationary series.
+#' @param n0 remove the n0 first observation, integer.
+#' @param a vector of innovations, optional.
 #' @export
-sim.um <- function(mdl, n = 100, z0 = NULL, seed = NULL, envir=NULL, ...) {
+sim.um <- function(mdl, n = 100, z0 = NULL, n0 = 0, a = NULL, seed = NULL, 
+                   envir = parent.frame(), ...) {
   stopifnot(inherits(mdl, "um"), n > length(mdl$nabla))
-  if (is.null (envir)) envir <- parent.frame ()
   if (is.null(mdl$mu)) mu <- 0
   else mu <- mdl$mu
   if (is.null(z0)) {
@@ -1213,10 +1234,15 @@ sim.um <- function(mdl, n = 100, z0 = NULL, seed = NULL, envir=NULL, ...) {
     else z0 <- eval(parse(text = mdl$z), envir)
   }
   if (!is.null(seed)) set.seed(seed)
-  a <- rnorm(n, 0, sqrt(mdl$sig2))
+  if (n0 < 0) n0 <- abs(n0)
+  if (!is.null(a)) {
+    stopifnot(length(a) == (n+n0) )
+  } else a <- rnorm(n + abs(n0), 0, sqrt(mdl$sig2))
   z <- simC(a, mdl$bc, mu, mdl$phi, mdl$nabla, mdl$theta, z0)
   z <- as.numeric(z)
-  if (is.ts(z0)) z <- ts(z, start = start(z0), frequency = frequency(z0))  
+  if (n0 > 0) z <- z[-(1:n0)]
+  if (is.ts(z0)) z <- ts(z, start = start(z0), frequency = frequency(z0)) 
+  else z <- ts(z)
   return(z)
 }  
 
@@ -1277,7 +1303,10 @@ summary.um <- function(object, z = NULL, method = c("exact", "cond"),
   stopifnot(inherits(object, "um"))
   if (is.null (envir)) envir <- parent.frame ()
   model.name <- deparse(substitute(object))
-
+  args <- list(...)
+  if(is.null(args[["table"]])) table <- FALSE
+  else table <- args[["table"]]
+  
   if (is.null(z)) {
     if (is.null(object$z)) stop("argument z required")
     else {
@@ -1352,6 +1381,7 @@ summary.um <- function(object, z = NULL, method = c("exact", "cond"),
   X <- cbind(b, g, se, z, p)
   colnames(X) <- c("Estimate", "Gradient", "Std. Error", "z Value", "Pr(>|z|)")
   rownames(X) <- b.names
+  if (table) return(X)
   
   tss <- var(z)*(N-1)
   mean.resid <- mean(res)
@@ -1395,9 +1425,18 @@ summary.um <- function(object, z = NULL, method = c("exact", "cond"),
 
 
 #' @export
-print.summary.um <- function(x, stats = TRUE, 
+print.summary.um <- function(x, stats = TRUE, short = FALSE,
                              digits = max(3L, getOption("digits") - 3L), ...) {
   stopifnot(inherits(x, "summary.um")||inherits(x, "summary.tfm"), ...) 
+  
+  if (short) {
+    print(x$table[, c(1, 3)])
+    cat("\nlog likelihood: ", x$logLik)
+    cat("\nResidual standard error: ", x$sd.resid)
+    cat("\naic:", x$aic)
+    return(invisible(NULL))
+  }
+  
   cat("\nModel:\n", x$model.name, " <- ", deparse(x$call, width.cutoff = 75L), "\n")
   cat("\nTime series:\n")
   if (!is.null(x$start)) {
@@ -1705,6 +1744,58 @@ sum_um <- function(...) {
   
 }
 
+#' Structural form for an ARIMA model
+#'
+#' \code{sform} finds the structural form for an ARIMA model from its the eventual
+#' forecast function.
+#'
+#' @param mdl an object of class \code{um}.
+#'
+#' @return An object of class \code{stsm}
+#'
+#' @export
+sform <- function (mdl, ...) { UseMethod("sform") }
+
+#' @rdname sform
+#' @param fSv optional function to create the covariance matrix.
+#' @param par vector of parameters for function fSv.
+#' @param ... other arguments.
+#' 
+#' @examples
+#' 
+#' airl <- um(i = list(1, c(1, 12)), ma = "(1 - 0.86B)(1 - 0.8B12)")
+#' sf <- sform(airl)
+#' sf
+#' 
+#' @export
+#' 
+sform.um <- function(mdl, fSv = NULL, par = NULL, ...) {
+  if (is.null(mdl$mu)) mu <- 0
+  else mu <- mdl$mu
+  ariroots <- unlist( lapply(mdl$i, function(x) roots(x, FALSE)) )
+  R <- sortrootsC(1/ariroots)
+  C <- decompFC(R, mu)
+  psi <- psi.weights(mdl, lag.max = ncol(C), var.psi = TRUE)[-1]
+  C1 <- C[-nrow(C), ]
+  C2 <- C[-1, ]
+  c1 <- C[1, ]
+  iC1 <- solve(C1)
+  C <- iC1 %*% C2
+  b <- as.vector(c1 %*% solve(C))
+  d <- as.vector(iC1 %*% psi)
+  C[abs(C) < .Machine$double.eps] <- 0
+  b[abs(b) < .Machine$double.eps] <- 0
+  s2u <- (1 - sum(b*d))*mdl$sig2
+  if (is.null(fSv)){
+    psi <- unname(psi)
+    s2v <- sqrt(mdl$sig2)*psi
+    return(stsm(NULL, b, C, .sPsi, s2v, s2u, bc = mdl$bc))
+  } else if (!is.null(par)) {
+    g <- autocov(mdl, lag.max = length(b))
+    mdl1 <- stsm(NULL, b, C, fSv, par, s2u)
+    return(fit2autocov(mdl1, g))
+  }
+}
 
 #' Unscramble MA polynomial
 #'

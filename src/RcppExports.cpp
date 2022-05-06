@@ -6,6 +6,11 @@
 
 using namespace Rcpp;
 
+#ifdef RCPP_USE_GLOBAL_ROSTREAM
+Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
+Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
+#endif
+
 // acovtomaC
 arma::colvec acovtomaC(const arma::colvec& g);
 RcppExport SEXP _tfarima_acovtomaC(SEXP gSEXP) {
@@ -211,8 +216,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // outliersC
-arma::mat outliersC(const arma::colvec& z, bool bc, double mu, const arma::colvec& phi, const arma::colvec& nabla, const arma::colvec& theta, arma::ucolvec& timing, bool eres, double c);
-RcppExport SEXP _tfarima_outliersC(SEXP zSEXP, SEXP bcSEXP, SEXP muSEXP, SEXP phiSEXP, SEXP nablaSEXP, SEXP thetaSEXP, SEXP timingSEXP, SEXP eresSEXP, SEXP cSEXP) {
+arma::mat outliersC(const arma::colvec& z, bool bc, double mu, const arma::colvec& phi, const arma::colvec& nabla, const arma::colvec& theta, const arma::ucolvec& types, arma::ucolvec& timing, bool eres, double c);
+RcppExport SEXP _tfarima_outliersC(SEXP zSEXP, SEXP bcSEXP, SEXP muSEXP, SEXP phiSEXP, SEXP nablaSEXP, SEXP thetaSEXP, SEXP typesSEXP, SEXP timingSEXP, SEXP eresSEXP, SEXP cSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -222,10 +227,11 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::colvec& >::type phi(phiSEXP);
     Rcpp::traits::input_parameter< const arma::colvec& >::type nabla(nablaSEXP);
     Rcpp::traits::input_parameter< const arma::colvec& >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< const arma::ucolvec& >::type types(typesSEXP);
     Rcpp::traits::input_parameter< arma::ucolvec& >::type timing(timingSEXP);
     Rcpp::traits::input_parameter< bool >::type eres(eresSEXP);
     Rcpp::traits::input_parameter< double >::type c(cSEXP);
-    rcpp_result_gen = Rcpp::wrap(outliersC(z, bc, mu, phi, nabla, theta, timing, eres, c));
+    rcpp_result_gen = Rcpp::wrap(outliersC(z, bc, mu, phi, nabla, theta, types, timing, eres, c));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -478,6 +484,22 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// llrfC
+double llrfC(const arma::colvec& w, const arma::colvec& d, const arma::mat& A, const arma::mat& Sv, double s2u, bool s2star);
+RcppExport SEXP _tfarima_llrfC(SEXP wSEXP, SEXP dSEXP, SEXP ASEXP, SEXP SvSEXP, SEXP s2uSEXP, SEXP s2starSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::colvec& >::type w(wSEXP);
+    Rcpp::traits::input_parameter< const arma::colvec& >::type d(dSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type A(ASEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type Sv(SvSEXP);
+    Rcpp::traits::input_parameter< double >::type s2u(s2uSEXP);
+    Rcpp::traits::input_parameter< bool >::type s2star(s2starSEXP);
+    rcpp_result_gen = Rcpp::wrap(llrfC(w, d, A, Sv, s2u, s2star));
+    return rcpp_result_gen;
+END_RCPP
+}
 // tacovC
 arma::colvec tacovC(const arma::colvec& phi, const arma::colvec& theta, double sigma2, int nlags);
 RcppExport SEXP _tfarima_tacovC(SEXP phiSEXP, SEXP thetaSEXP, SEXP sigma2SEXP, SEXP nlagsSEXP) {
@@ -521,7 +543,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_tfarima_gresC", (DL_FUNC) &_tfarima_gresC, 3},
     {"_tfarima_ssrC", (DL_FUNC) &_tfarima_ssrC, 3},
     {"_tfarima_cllarmaC", (DL_FUNC) &_tfarima_cllarmaC, 3},
-    {"_tfarima_outliersC", (DL_FUNC) &_tfarima_outliersC, 9},
+    {"_tfarima_outliersC", (DL_FUNC) &_tfarima_outliersC, 10},
     {"_tfarima_polyevalC", (DL_FUNC) &_tfarima_polyevalC, 2},
     {"_tfarima_polyrootsC", (DL_FUNC) &_tfarima_polyrootsC, 1},
     {"_tfarima_sortrootsC", (DL_FUNC) &_tfarima_sortrootsC, 1},
@@ -542,6 +564,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_tfarima_simC", (DL_FUNC) &_tfarima_simC, 7},
     {"_tfarima_spectrumC", (DL_FUNC) &_tfarima_spectrumC, 4},
     {"_tfarima_pgramC", (DL_FUNC) &_tfarima_pgramC, 2},
+    {"_tfarima_llrfC", (DL_FUNC) &_tfarima_llrfC, 6},
     {"_tfarima_tacovC", (DL_FUNC) &_tfarima_tacovC, 4},
     {"_tfarima_pacorrC", (DL_FUNC) &_tfarima_pacorrC, 3},
     {NULL, NULL, 0}

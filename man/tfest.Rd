@@ -13,6 +13,7 @@ tfest(
   um.y = NULL,
   um.x = NULL,
   n.back = NULL,
+  par.prefix = "",
   envir = NULL
 )
 }
@@ -23,15 +24,17 @@ tfest(
 
 \item{delay}{integer.}
 
-\item{p}{order of the AR polynomial, double.}
+\item{p}{order of the AR polynomial, integer}
 
-\item{q}{order of the MA polynomial, double.}
+\item{q}{order of the MA polynomial, integer.}
 
 \item{um.y}{univariate model for output, um object or NULL.}
 
 \item{um.x}{univariate model for input, um object or NULL.}
 
 \item{n.back}{number of backcasts.}
+
+\item{par.prefix}{prefix name for parameters.}
 
 \item{envir}{environment in which the function arguments are evaluated.
 If NULL the calling environment of this function will be used.}

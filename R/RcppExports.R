@@ -57,8 +57,8 @@ cllarmaC <- function(w, phi, theta) {
     .Call(`_tfarima_cllarmaC`, w, phi, theta)
 }
 
-outliersC <- function(z, bc, mu, phi, nabla, theta, timing, eres, c) {
-    .Call(`_tfarima_outliersC`, z, bc, mu, phi, nabla, theta, timing, eres, c)
+outliersC <- function(z, bc, mu, phi, nabla, theta, types, timing, eres, c) {
+    .Call(`_tfarima_outliersC`, z, bc, mu, phi, nabla, theta, types, timing, eres, c)
 }
 
 polyevalC <- function(pol, z) {
@@ -139,6 +139,10 @@ spectrumC <- function(phi, theta, sigma2, nfreq) {
 
 pgramC <- function(y, cpgram) {
     .Call(`_tfarima_pgramC`, y, cpgram)
+}
+
+llrfC <- function(w, d, A, Sv, s2u, s2star) {
+    .Call(`_tfarima_llrfC`, w, d, A, Sv, s2u, s2star)
 }
 
 tacovC <- function(phi, theta, sigma2, nlags) {

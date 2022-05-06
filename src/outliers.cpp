@@ -25,67 +25,6 @@ void tratioC(int tau, arma::colvec &x, const arma::colvec &y, double &b, double 
 
 }
   
-
-void tempchangeC(int tau, arma::colvec &x, const arma::colvec &y, double &b, 
-                 double &t, double &w) {
-// t.ratio for temporary change
-  int i, n, iter;
-  double h, Sxx, Sxy, t0, b1, w1;
-  
-  t0 = t;
-  h = sqrt(2.2e-16);
-  n = x.n_elem;
-  vec x1(n, fill::zeros), u(n), u1(n);
-
-  w = 0.7;
-  iter = 0;  
-  while(iter++ < 25) {
-    x1(tau) = 1.0;
-    Sxx = 1; Sxy = y(tau);
-    for (i = tau + 1; i < n; i++){
-      x1(i) = w*x1(i-1) + x(i - tau);
-      Sxx += pow(x1(i), 2);
-      Sxy += y(i)*x1(i);
-    }
-    b = Sxy/Sxx;
-    u = x1*b - y;
-
-    w1 = w + h;
-    Sxx = 1; Sxy = y(tau);
-    for (i = tau + 1; i < n; i++){
-      x1(i) = w1*x1(i-1) + x(i - tau);
-      Sxx += pow(x1(i), 2);
-      Sxy += y(i)*x1(i);
-    }
-    b1 = Sxy/Sxx;
-    u1 = x1*b1 - y;
-    x1 = (u1 - u)/(w1 - w);    
-    Sxx = dot(x1, x1);
-    Sxy = dot(x1, u);
-    if (fabs(Sxy) < 0.0001) break;
-    w1 = w - Sxy/Sxx;
-    w = w1;
-  }
-
-  if (w > 0.3 && w < 1 && iter < 25) {
-    x1(tau) = 1.0;
-    Sxx = 1; Sxy = y(tau);
-    for (i = tau + 1; i < n; i++) {
-      x1(i) = w*x1(i-1) + x(i - tau);
-      Sxx += pow(x1(i), 2);
-      Sxy += y(i)*x1(i);
-    }
-    x = x1;
-    b = Sxy/Sxx;
-    w1 = dot(y, y) - pow(b, 2)*Sxx;
-    w1 /= (x.n_elem-1);
-    t = b/sqrt(w1/Sxx);
-    if (fabs(t) < fabs(t0))
-      t = w = 0;
-  } else t = w = 0;
-
-}
-
 // Automatic outlier detection
 //
 // \code{outliersC} C function to detect outliers.
@@ -108,6 +47,7 @@ void tempchangeC(int tau, arma::colvec &x, const arma::colvec &y, double &b,
 //   [[Rcpp::export]]
 arma::mat outliersC(const arma::colvec &z, bool bc, double mu, const arma::colvec &phi,
                     const arma::colvec &nabla, const arma::colvec &theta, 
+                    const arma::ucolvec &types, 
                     arma::ucolvec &timing, bool eres, double c) {
   
   int t, tau, i, N, T, k, iter;
@@ -127,6 +67,9 @@ arma::mat outliersC(const arma::colvec &z, bool bc, double mu, const arma::colve
   vec x1 = polyratioC(ph, theta, N-1); // pi-weights
   vec x2 = cumsum(x1); // cumulative pi-weights
   vec x3(N);
+  x3(0) = 1;
+  for (t = 1; t < N; t++)
+    x3(t) = 0.7*x3(t-1) + x1(t);
   
   if (timing(0) < 1) {
     timing.resize(N);
@@ -138,56 +81,69 @@ arma::mat outliersC(const arma::colvec &z, bool bc, double mu, const arma::colve
   mat A(T, 6, fill::zeros);
   sa = stddev(a);
   iter = 0;
-  while(iter++ < 4) {
+  int t1 = N;
+  while(iter++ < 5) {
     k = 0;  
     for (t = 0; t < T; t++) {
-      if (A(t, 0) < 0.5) { // outlier has not been handled
+      if (A(t, 0) < 0.5) { // outlier has not been handled yet
         tau = timing(t) - 1;
         d1 = a(tau);
         d2 = d1/sa;
         if (fabs(d2) > c||T < N) {
+          if (t < t1) t1 = t;
           A(t, 0) = timing(t);
           A(t, 1) = 1; 
-          A(t, 2) = d1; 
-          A(t, 3) = d2; 
+          if (types[3] == 1) {
+            A(t, 2) = d1; 
+            A(t, 3) = d2; 
+          } else {
+            A(t, 2) = 0; 
+            A(t, 3) = 0; 
+          }
           if (tau < N-1) {
-            tratioC(tau, x1, a, d1, d2);
-            if ( fabs(d2) > fabs(A(t, 3)) ) {
-              A(t, 1) = 2; 
-              A(t, 2) = d1; 
-              A(t, 3) = d2; 
+            if (types[0] == 1) { // Additive outlier
+              tratioC(tau, x1, a, d1, d2);
+              if ( fabs(d2) > fabs(A(t, 3)) ) {
+                A(t, 1) = 2; 
+                A(t, 2) = d1; 
+                A(t, 3) = d2; 
+              }
             }
-            tratioC(tau, x2, a, d1, d2);
-            if (fabs(d2) > fabs(A(t, 3)) ) {
-              A(t, 1) = 3; 
-              A(t, 2) = d1; 
-              A(t, 3) = d2; 
+            if (types[1] == 1) { // Level shift
+              tratioC(tau, x2, a, d1, d2);
+              if (fabs(d2) > fabs(A(t, 3)) ) {
+                A(t, 1) = 3; 
+                A(t, 2) = d1; 
+                A(t, 3) = d2; 
+              }
             }
-            if ((int)A(t, 1) < 3) {
-              x3 = x1;
-              d1 = A(t, 2); d2 = A(t, 3);
-              tempchangeC(tau, x3, a, d1, d2, A(t, 4));
+            if (types[2] == 1) { // Temporary change
+              tratioC(tau, x3, a, d1, d2);
               if ( fabs(d2) > fabs(A(t, 3)) ) {
                 A(t, 1) = 4; 
                 A(t, 2) = d1; 
                 A(t, 3) = d2;
-              } else A(t, 4) = 0;
+                A(t, 4) = 0.7;
+              } 
             }
           } else A(t, 1) = 2;
-          if (A(t, 1) == 1) {
-            a(tau) -= A(t, 2);
-          } else if (A(t, 1) == 2) {
-            for (i = tau; i < N; i++) 
-              a(i) -= A(t, 2)*x1(i-tau);
-          } else if(A(t, 1) == 3) {
-            for (i = tau; i < N; i++) 
-              a(i) -= A(t, 2)*x2(i-tau);
-          } else if (A(t, 1) == 4) {
-            for (i = tau; i < N; i++) 
-              a(i) -= A(t, 2)*x3(i-tau);
+         
+          if (fabs(d2) > 1.64) {
+            if (A(t, 1) == 1) {
+              a(tau) -= A(t, 2);
+            } else if (A(t, 1) == 2) {
+              for (i = tau; i < N; i++) 
+                a(i) -= A(t, 2)*x1(i-tau);
+            } else if(A(t, 1) == 3) {
+              for (i = tau; i < N; i++) 
+                a(i) -= A(t, 2)*x2(i-tau);
+            } else if (A(t, 1) == 4) {
+              for (i = tau; i < N; i++) 
+                a(i) -= A(t, 2)*x3(i-tau);
+            }
+            sa = stddev(a);
+            ++k;
           }
-          sa = stddev(a);
-          ++k;
         }
       }
     }
@@ -199,7 +155,6 @@ arma::mat outliersC(const arma::colvec &z, bool bc, double mu, const arma::colve
   for (t = T - 1; t > - 1; t--) {
     if (A(t, 0) < 0.5) A.shed_row(t);
   }
-  
   k = A.n_rows;
   if (k > 1) {
     vec x(k, fill::zeros);
@@ -208,22 +163,21 @@ arma::mat outliersC(const arma::colvec &z, bool bc, double mu, const arma::colve
     vec b(k);
     mat vb(k, k);
     int j = 0;
-    for (t = 0; t < N; t++) {
-      for (j = 0; j < k; j++) {    
+    for (t = t1; t < N; t++) {
+      for (j = 0; j < k; j++) {
+        x(j) = 0;
         switch((int)A(j, 1)) {
         case 1:
           if ((int)A(j, 0) == t+1) x(j) = 1;
-          else x(j) = 0;
           break;
         case 2:
-          if ((int)A(j, 0) >= t+1) x(j) = x1((int)A(j, 0) - t - 1);
+          if ((int)A(j, 0) <= t+1) x(j) = x1(-(int)A(j, 0) + t + 1);
           break;
         case 3:
-          if ((int)A(j, 0) >= t+1) x(j) = x2((int)A(j, 0) - t - 1);
+          if ((int)A(j, 0) <= t+1) x(j) = x2(-(int)A(j, 0) + t + 1);
           break;
         default:
-          if ((int)A(j, 0) >= t+1) x(j) = x1((int)A(j, 0) - t - 1) 
-            + A(j, 4)*x(j);
+          if ((int)A(j, 0) <= t+1) x(j) = x3(-(int)A(j, 0) + t + 1); 
         }
       }
       XX += x*x.t(); 
@@ -231,10 +185,10 @@ arma::mat outliersC(const arma::colvec &z, bool bc, double mu, const arma::colve
     }
     XX = inv_sympd(XX);
     b = XX*Xy;
-    d1 = dot(a, a) - dot(Xy, XX*Xy);
+    d1 = dot(a1, a1) - dot(Xy, XX*Xy);
     vb = (d1/(N-k))*XX;
     for (j = k - 1; j > 0; j--) {
-      if (fabs(b(j)/sqrt(vb(j, j))) < c) A.shed_row(j);
+      if (fabs(b(j)/sqrt(vb(j, j))) < 1.64) A.shed_row(j);
     }
   }
 

@@ -93,11 +93,12 @@ as.lagpol <- function(pol, p = 1) {
   pol <- as.numeric(pol)
   stopifnot(pol[1] == 1)
   k <- length(pol) - 1
-  if (k == 0) return(lagpol(NULL))
+  if (k == 0) return(NULL)
   pol[1] <- 0
   lags <- pol != 0
   pol <- -pol[lags]
   lags <- (0:k)[lags]
+  if (length(lags) < 1) return(NULL)
   names(pol) <- paste("a", lags, sep = "")
   lp <- lagpol(pol, lags = lags, p = p)
   return(lp)
@@ -233,6 +234,7 @@ as.character.lagpol <- function(lp, digits = 2, pol = FALSE, eq = FALSE, ...) {
   d <- length(p) - 1
   names(p) <- 0:d
   p <- p[p != 0]
+  if (length(p) == 0) return("0")
   
   signs <- ifelse(p < 0, "- ", "+ ")
   if (signs[1] == "+ ") signs[1] <- ""
@@ -527,7 +529,10 @@ polyexpand <- function(...) {
   nm <- names(param)
   nm <- nm[startsWith(nm, coef.name)]
   if (!is.null(nm)) {
-    max(as.numeric(gsub(coef.name, "", nm)))
+    i <- as.numeric(gsub(coef.name, "", nm)) 
+    i <- i[is.numeric(i)]
+    if (length(i) > 0) return(max(i))
+    else return(0)
   } else {
     0
   }
