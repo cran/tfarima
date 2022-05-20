@@ -1,15 +1,15 @@
-5e1a3088ea7cdb1dbad1395f8329065f *DESCRIPTION
-3f196c6bca01267f023cb9553df3fd93 *NAMESPACE
+ae2488ef961e7a59761b6a2e2ce02557 *DESCRIPTION
+d0686579422ba2e5943572318bdd0a55 *NAMESPACE
 9a2244c750044d0c7eefeba0c2f73a56 *R/RcppExports.R
 9c748e4893cc9e2500a92e93e982c1a9 *R/data.R
 db1dff989de513fd22560d2e5e85cbc1 *R/detvar.R
 5d36a11f3331fe83590b3ff984ddb15b *R/ide.R
 c2ec6f4237d56a26f4b3ba9ff3021449 *R/lagpol.R
 68a662416f19d8d2ceb893bca9929ecd *R/stsm.R
-cc754924b73ff10b00fd131a867ea433 *R/tf.R
+f02734616ee54301d182b9892a92734d *R/tf.R
 ffd4cc9638f4f3965451b9362a6ee334 *R/tfarima-package.R
-bfcf6b39b9dbaeadcc14fe7bc49d6161 *R/tfm.R
-36c263ef26f6af64193ea4e8d0bf4805 *R/um.R
+fa3199a280b131fddd710155c7889028 *R/tfm.R
+7ce6f97c0eb27c974b3b4af02522f593 *R/um.R
 3d3d958c17cf8ed78a2ed7ddd77689a3 *R/utils.R
 6973f26d4e450e4abb49397cf0392ac2 *README.md
 ac4df40d7e173c05a6a98ffe8310af37 *build/vignette.rds
@@ -18,7 +18,7 @@ fbe26b0576b036d2526c0a51fa76b259 *data/rsales.rda
 7272f08464105002cace0d893d813fa5 *data/seriesC.rda
 98fc460e3f1b54f02930f3643510c800 *data/seriesJ.rda
 0ac216848955c51f4f4563ade3bcbb02 *inst/doc/tfarima.Rnw
-867a12a1a718481c54bc2456c20f0764 *inst/doc/tfarima.pdf
+12d910cf9f0a6d7d99f2396879fb0e08 *inst/doc/tfarima.pdf
 bf10fe325bbbf3afc44ac9c07b76e7d5 *man/CalendarVar.Rd
 100afa613008a4792a3b67b8071adcd3 *man/InterventionVar.Rd
 7b083d6a86bd15e7799e78de6a429909 *man/S.Rd
@@ -86,7 +86,7 @@ b8681351cb7282c3405f605e19d248b7 *man/theta.Rd
 afde597df5ea08caced19e250274a97b *man/tsdiag.tfm.Rd
 d25c27819a31ad7575cfaa4bbac73ec5 *man/tsdiag.um.Rd
 ea9c1d7307a4531b0c023fd22ffd74fa *man/tsvalue.Rd
-5e0a6bc68d2da97e694d508258da7001 *man/ucomp.Rd
+bb8513c0e7221ca04af035886a8b4a6b *man/ucomp.Rd
 9319005f654b3e8a608c840ec6854e79 *man/um.Rd
 27abc075484d9759f32e365765393725 *man/varsel.Rd
 61059660eb073d93e00e8ee054237071 *src/Makevars
@@ -94,7 +94,7 @@ ea9c1d7307a4531b0c023fd22ffd74fa *man/tsvalue.Rd
 4df10bc44cccf660f21828c4e2fba336 *src/RcppExports.cpp
 1082662cb1cc803abfda081927316ec0 *src/acovtoma.cpp
 6e6c1356ab289ed949cca71e843ee9ea *src/acovtoma.h
-8045d7a5090e10ff09fa1097a9beaa52 *src/decomp.cpp
+c0d43a466478d85efc62c53264ff6e1b *src/decomp.cpp
 6aa2449af91c3ab5d8c8d436315d02a8 *src/decomp.h
 8e0bdc40ae841a66649214a356135bcb *src/diff.cpp
 44ac42bb74904d3bda3598249870d6a9 *src/diff.h

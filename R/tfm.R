@@ -285,7 +285,9 @@ fit.tfm <- function(mdl, y = NULL, method = c("exact", "cond"),
     X <- lapply(mdl$inputs, function(tf) {
       x <- diffC(tf$x, mdl$noise$nabla, tf$um$bc)
       t0[i] <<- tf$t.start
-      t1[i] <<- tf$t.start + n - 1
+      if (length(x) > n)
+        t1[i] <<- tf$t.start + n - 1
+      i <<- i + 1
       x
     })
   }
@@ -374,7 +376,7 @@ noise.tfm <- function(tfm, y = NULL, diff = TRUE, exp = FALSE, envir = NULL, ...
   N <- length(y)
   if (tfm$noise$bc) y <- log(y)
   
-  if (diff & tfm$noise$d > 0) {
+  if (diff && tfm$noise$d > 0) {
     y <- diffC(y, tfm$noise$nabla, FALSE)
     n <- length(y)
     if (tfm$kx > 0) {
@@ -413,7 +415,7 @@ noise.tfm <- function(tfm, y = NULL, diff = TRUE, exp = FALSE, envir = NULL, ...
                      tfm$inputs[[i]]$phi, tfm$inputs[[i]]$delay)
         t0 <- tfm$inputs[[i]]$t.start
         t1 <- tfm$inputs[[i]]$t.end
-        if (t0 > 1 | length(tfm$inputs[[i]]$x) > t1)
+        if (t0 > 1 || length(tfm$inputs[[i]]$x) > t1)
           y <- y - x[t0:t1]
         else
           y <- y - x
@@ -1365,12 +1367,12 @@ ccf.tfm <- function(tfm, lag.max = NULL, method = c("exact", "cond"), envir=NULL
 #'    If NULL the calling environment of this function will be used.
 #' @export
 ucomp.tfm <- function(mdl, y = NULL,
-                      method = c("mixed", "forecast", "backcast"), envir=envir, ...) {
+                      method = c("mixed", "forecast", "backcast"), 
+                      envir = NULL, ...) {
 
   if (is.null (envir)) envir <- parent.frame ()
-  y <- noise.tfm(mdl, y, FALSE, envir=envir)
-  mdl$noise$bc <- FALSE
-  uc <- ucomp.um(mdl$noise, y, method, envir=envir)
+  y <- noise.tfm(mdl, y, FALSE, TRUE, envir = envir)
+  uc <- ucomp.um(mdl$noise, y, method)
   return(uc)
 
 }

@@ -666,6 +666,15 @@ logLik.um <-function(object, z = NULL, method = c("exact", "cond"), ...) {
   return(ll)
 }
 
+#' @export
+AIC.um <- function(object, z = NULL, method = c("exact", "cond"), ..., k = 2) {
+  method <- match.arg(method)
+  w <- w.um(object, z, TRUE)
+  if (method == "exact") ll <- ellarmaC(w, object$phi, object$theta)
+  else ll <- cllarmaC(w, object$phi, object$theta)
+  b <- param.um(object)
+  aic <- (-2.0*ll+k*length(b))/length(w)
+}
 
 #' Modifying a TF or an ARIMA model
 #'
@@ -1017,7 +1026,7 @@ print.predict.um <- function(x, rows = NULL, ...) {
 
 #' @export
 plot.predict.um <- function(x, n.back = 0, xlab = "Time", ylab = "z", main = "",
-                            symbol= TRUE, col = c("black", "blue", "red"), ...) {
+                            symbol= TRUE, pch = 16, col = c("black", "blue", "red"), ...) {
   n.back <- as.integer(n.back)
   n2 <- length(x$z)
   if (n.back > 0)  {
@@ -1049,7 +1058,7 @@ plot.predict.um <- function(x, n.back = 0, xlab = "Time", ylab = "z", main = "",
     lines(z, col = col[1])
   }
   
-  if (symbol) lines(zf, type = "o", pch = 16, cex = 0.6, col = col[2])
+  if (symbol) lines(zf, type = "o", pch = pch, cex = 0.6, col = col[2])
   else lines(zf, col = col[2])
   
   k <- ncol(x$low)
@@ -1772,7 +1781,7 @@ sform <- function (mdl, ...) { UseMethod("sform") }
 sform.um <- function(mdl, fSv = NULL, par = NULL, ...) {
   if (is.null(mdl$mu)) mu <- 0
   else mu <- mdl$mu
-  ariroots <- unlist( lapply(mdl$i, function(x) roots(x, FALSE)) )
+  ariroots <- unlist( lapply( c(mdl$ar, mdl$i), function(x) roots(x, FALSE)) )
   R <- sortrootsC(1/ariroots)
   C <- decompFC(R, mu)
   psi <- psi.weights(mdl, lag.max = ncol(C), var.psi = TRUE)[-1]
@@ -1786,6 +1795,7 @@ sform.um <- function(mdl, fSv = NULL, par = NULL, ...) {
   C[abs(C) < .Machine$double.eps] <- 0
   b[abs(b) < .Machine$double.eps] <- 0
   s2u <- (1 - sum(b*d))*mdl$sig2
+  if (s2u < 0) s2u <- 0
   if (is.null(fSv)){
     psi <- unname(psi)
     s2v <- sqrt(mdl$sig2)*psi
